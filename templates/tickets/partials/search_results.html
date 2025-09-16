@@ -1,0 +1,8 @@
+{% for h in herramientas %}
+  <a href="#" class="list-group-item list-group-item-action"
+     hx-get="{% url 'detalles_herramienta' h.pk %}"
+     hx-target="#herramienta-details"
+     onclick="document.getElementById('id_herramienta').value='{{ h.pk }}'; document.getElementById('search-results').innerHTML=''; document.getElementById('id_text_search').value='{{ h }}'; return false;">
+     {{ h }}
+  </a>
+{% endfor %}
