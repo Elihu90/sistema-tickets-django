@@ -4,7 +4,7 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <h1>Generar Nuevo Ticket de Reparación</h1>
+        <h1>{{ titulo|default:"Generar Nuevo Ticket de Reparación" }}</h1>
     </div>
     <div class="card-body">
         {% if messages %}
@@ -12,12 +12,9 @@
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
+        
+        {% crispy form %}
 
-        <form method="post">
-            {% csrf_token %}
-            {% crispy form %}
-            <button type="submit" class="btn btn-primary mt-3">Guardar Ticket</button>
-        </form>
     </div>
 </div>
 {% endblock %}

@@ -146,4 +146,4 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 LOGIN_URL = 'cuentas/login/'
 
 # URL a la que se redirige DESPUÉS de un inicio de sesión exitoso
-LOGIN_REDIRECT_URL = '/tickets/crear/'
+LOGIN_REDIRECT_URL =  '/tickets/lista/'

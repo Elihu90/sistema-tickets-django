@@ -1,3 +1,4 @@
+
 # tickets/forms.py
 
 from django import forms
@@ -6,8 +7,7 @@ from usuarios.models import GrupoNotificacion
 
 # Crispy Forms
 from crispy_forms.helper import FormHelper
-# ¡Añadimos HTML a la importación!
-from crispy_forms.layout import Layout, Row, Column, Field, HTML
+from crispy_forms.layout import Layout, Row, Column, Field, HTML, Submit
 
 class TicketForm(forms.ModelForm):
     text_search = forms.CharField(
@@ -29,8 +29,10 @@ class TicketForm(forms.ModelForm):
         required=False
     )
 
+    # --- LA CORRECCIÓN ESTÁ AQUÍ ---
+    # Esta clase interna es obligatoria para un ModelForm
     class Meta:
-        model = Ticket
+        model = Ticket  # Le dice al formulario que use el modelo Ticket
         fields = [
             'herramienta', 'falla', 'ubicacion', 'comentarios', 'numero_ticket_externo',
         ]
@@ -43,17 +45,13 @@ class TicketForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
+        
         self.helper.layout = Layout(
             'text_search',
-            
-            # --- CORRECCIÓN AQUÍ ---
-            # Envolvemos el HTML en el objeto HTML()
             HTML('<div class="htmx-indicator">Buscando...</div>'),
             HTML('<div id="search-results" class="list-group mb-3"></div>'),
             HTML('<div id="herramienta-details"></div>'),
-            
             'herramienta', 
-            
             Row(
                 Column('falla', css_class='form-group col-md-6 mb-0'),
                 Column('ubicacion', css_class='form-group col-md-6 mb-0'),
@@ -61,5 +59,6 @@ class TicketForm(forms.ModelForm):
             ),
             'comentarios',
             'numero_ticket_externo',
-            'grupos_notificacion'
+            'grupos_notificacion',
+            Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-3')
         )
