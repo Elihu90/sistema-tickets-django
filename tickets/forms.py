@@ -1,64 +1,82 @@
-
 # tickets/forms.py
 
 from django import forms
-from .models import Ticket, Herramienta
+from .models import Ticket
 from usuarios.models import GrupoNotificacion
-
-# Crispy Forms
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field, HTML, Submit
 
-class TicketForm(forms.ModelForm):
-    text_search = forms.CharField(
-        label="",
-        required=False,
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Busca la herramienta por número de serie o modelo...',
-            'hx-post': '/tickets/buscar-herramientas/',
-            'hx-trigger': 'keyup changed delay:500ms',
-            'hx-target': '#search-results',
-            'hx-indicator': '.htmx-indicator',
-        })
-    )
-    
-    grupos_notificacion = forms.ModelMultipleChoiceField(
-        queryset=GrupoNotificacion.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        label="Notificar a los siguientes grupos",
-        required=False
-    )
+# ... (TACTO_CHOICES y OPERACION_CHOICES se quedan igual) ...
+TACTO_CHOICES = [('', 'Seleccionar Tacto')] + [(str(i), str(i)) for i in range(1, 31)]
+OPERACION_CHOICES = [('', 'Seleccionar Operación')] + [(f'OP {i*10}', f'OP {i*10}') for i in range(1, 16)]
 
-    # --- LA CORRECCIÓN ESTÁ AQUÍ ---
-    # Esta clase interna es obligatoria para un ModelForm
+class TicketForm(forms.ModelForm):
+    # ... (campos existentes)
+    text_search = forms.CharField(label="Buscar Herramienta", required=False, widget=forms.TextInput(attrs={
+        'placeholder': 'Buscar por número de serie o modelo...',
+        'hx-post': '/tickets/buscar-herramientas/',
+        'hx-trigger': 'keyup changed delay:500ms', 'hx-target': '#search-results',
+        'hx-indicator': '.htmx-indicator',
+    }))
+    modelo_display = forms.CharField(label="Modelo", required=False, disabled=True)
+    fabricante_display = forms.CharField(label="Fabricante", required=False, disabled=True)
+
+    # --- NUEVOS CAMPOS DE SOLO LECTURA ---
+    numero_serie_display = forms.CharField(label="Número de Serie", required=False, disabled=True)
+    numero_reparacion_display = forms.CharField(label="Número de Reparación", required=False, disabled=True)
+
+    # ... (otros campos)
+    nombre_reporta = forms.CharField(label="Quien Reporta", required=False, disabled=True)
+    puesto_reporta = forms.CharField(label="Puesto", required=False, disabled=True)
+    email_reporta = forms.EmailField(label="Correo Electrónico", required=False, disabled=True)
+    nave_display = forms.CharField(label="Nave", required=False, disabled=True)
+    fecha_actual = forms.CharField(label="Fecha", required=False, disabled=True)
+    turno_actual = forms.CharField(label="Turno", required=False, disabled=True)
+    tacto = forms.ChoiceField(choices=TACTO_CHOICES, required=False)
+    operacion = forms.ChoiceField(choices=OPERACION_CHOICES, required=False)
+    grupos_notificacion = forms.ModelMultipleChoiceField(queryset=GrupoNotificacion.objects.all(), widget=forms.CheckboxSelectMultiple, label="Notificar a los siguientes grupos", required=False)
+
     class Meta:
-        model = Ticket  # Le dice al formulario que use el modelo Ticket
-        fields = [
-            'herramienta', 'falla', 'ubicacion', 'comentarios', 'numero_ticket_externo',
-        ]
-        widgets = {
-            'herramienta': forms.HiddenInput(),
-            'comentarios': forms.Textarea(attrs={'rows': 4}),
-        }
+        model = Ticket
+        fields = ['herramienta', 'falla', 'ubicacion', 'comentarios', 'tacto', 'operacion']
+        widgets = {'herramienta': forms.HiddenInput(), 'comentarios': forms.Textarea(attrs={'rows': 3})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
-        
         self.helper.layout = Layout(
-            'text_search',
+            # ... (secciones de Fecha, Quien Reporta, Ubicación)
+            Row(Field('fecha_actual', readonly=True), Field('turno_actual', readonly=True)),
+            HTML('<hr>'),
+            HTML('<h5 class="mb-3">1. Datos de Quien Reporta</h5>'),
+            Row(Column('nombre_reporta'), Column('puesto_reporta'), Column('email_reporta')),
+            HTML('<hr>'),
+            HTML('<h5 class="mb-3">2. Ubicación de la Falla</h5>'),
+            Row(Column('ubicacion'), Column('nave_display'), Column('tacto'), Column('operacion')),
+            HTML('<hr>'),
+
+            # --- LAYOUT ACTUALIZADO PARA HERRAMIENTAS ---
+            HTML('<h5 class="mb-3">3. Datos de la Herramienta</h5>'),
+            'text_search', # Mantenemos la búsqueda principal
             HTML('<div class="htmx-indicator">Buscando...</div>'),
-            HTML('<div id="search-results" class="list-group mb-3"></div>'),
-            HTML('<div id="herramienta-details"></div>'),
-            'herramienta', 
             Row(
-                Column('falla', css_class='form-group col-md-6 mb-0'),
-                Column('ubicacion', css_class='form-group col-md-6 mb-0'),
-                css_class='form-row'
+                Column('modelo_display', css_class='form-group col-md-6 mb-0'),
+                Column('fabricante_display', css_class='form-group col-md-6 mb-0'),
             ),
-            'comentarios',
-            'numero_ticket_externo',
+            # Añadimos una nueva fila para los nuevos campos
+            Row(
+                Column('numero_serie_display', css_class='form-group col-md-6 mb-0'),
+                Column('numero_reparacion_display', css_class='form-group col-md-6 mb-0'),
+            ),
+
+            # ... (resto del layout)
+            HTML('<div id="search-results" class="list-group mb-3"></div>'),
+            'herramienta',
+            HTML('<div id="ticket-duplicado-warning"></div>'),
+            HTML('<hr>'),
+            HTML('<h5 class="mb-3">4. Descripción de la Falla y Notificación</h5>'),
+            Row(Column('falla'), Column('comentarios')),
             'grupos_notificacion',
-            Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-3')
+            Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-4 w-100')
         )

@@ -37,6 +37,8 @@ class Ticket(models.Model):
     falla = models.ForeignKey(Falla, on_delete=models.SET_NULL, null=True, blank=True)
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.PROTECT)
     estado = models.ForeignKey(TicketEstado, on_delete=models.PROTECT)
+    turno = models.CharField(max_length=50, blank=True, null=True, verbose_name="Turno")
+
 
     def __str__(self):
         return f"Ticket {self.folio} ({self.estado.nombre})"
@@ -49,6 +51,8 @@ class AuditoriaTicket(models.Model):
     valor_nuevo = models.TextField(blank=True, null=True)
     accion = models.CharField(max_length=50)
     fecha = models.DateTimeField(auto_now_add=True)
+    tacto = models.CharField(max_length=50, blank=True, null=True, verbose_name="Tacto")
+    operacion = models.CharField(max_length=50, blank=True, null=True, verbose_name="Operación")
 
     def __str__(self):
         return f"Auditoría {self.id} en Ticket {self.ticket.folio}"

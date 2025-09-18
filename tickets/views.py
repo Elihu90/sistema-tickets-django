@@ -7,27 +7,55 @@ from django.urls import reverse
 from .forms import TicketForm
 from .models import Ticket, TicketEstado, Herramienta
 import datetime
+from django.utils import timezone
 
 @login_required
 def crear_ticket(request):
+    ahora = timezone.localtime(timezone.now())
+    hora_actual = ahora.time()
+
+    # Lógica para determinar el turno
+    if hora_actual >= datetime.time(6, 0) and hora_actual < datetime.time(14, 0):
+        turno = "1er Turno"
+    elif hora_actual >= datetime.time(14, 0) and hora_actual < datetime.time(21, 30):
+        turno = "2do Turno"
+    else:
+        turno = "3er Turno"
+
     if request.method == 'POST':
         form = TicketForm(request.POST)
         if form.is_valid():
             try:
                 estado_abierto = TicketEstado.objects.get(nombre='Abierto')
                 nuevo_ticket = form.save(commit=False)
+
+                # Asignamos los datos automáticos
                 nuevo_ticket.estado = estado_abierto
                 nuevo_ticket.creado_por = request.user
-                timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-                nuevo_ticket.folio = f'FOLIO-{timestamp}'
+                nuevo_ticket.turno = turno # Guardamos el turno
+
+                # --- NUEVA LÓGICA PARA EL FOLIO ---
+                # 1. Guardamos una primera vez para obtener un ID
+                nuevo_ticket.save() 
+
+                # 2. Generamos el folio usando el ID
+                nuevo_ticket.folio = f"TK{str(nuevo_ticket.id).zfill(8)}"
+
+                # 3. Guardamos de nuevo ya con el folio
                 nuevo_ticket.save()
+
                 messages.success(request, f"¡Ticket {nuevo_ticket.folio} creado exitosamente!")
                 return redirect('crear_ticket')
             except TicketEstado.DoesNotExist:
-                messages.error(request, "Error crítico: El estado 'Abierto' no existe. Por favor, créalo en el panel de administración.")
+                messages.error(request, "Error crítico: El estado 'Abierto' no existe...")
     else:
-        form = TicketForm()
-    
+        # Pre-poblamos el formulario con los datos automáticos
+        form = TicketForm(initial={
+            'fecha_actual': ahora.strftime("%d/%m/%Y %H:%M:%S"),
+            'turno_actual': turno,
+        })
+
+    # ... (el resto de la vista se queda igual)
     form.helper.form_action = reverse('crear_ticket')
     contexto = {
         'form': form,

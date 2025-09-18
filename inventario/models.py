@@ -26,6 +26,7 @@ class Herramienta(models.Model):
     fabricante = models.CharField(max_length=100, blank=True, null=True)
     modelo = models.CharField(max_length=100, blank=True, null=True)
     estado = models.CharField(max_length=50, blank=True, null=True)
+    ejecucion = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"{self.modelo or 'N/A'} - S/N: {self.numero_serie}"

@@ -45,5 +45,33 @@
     </main>
 
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+</main>
+
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+
+<script>
+    function selectTool(element) {
+        // Obtenemos todos los datos desde los atributos data-*
+        const toolPk = element.getAttribute('data-tool-pk');
+        const toolName = element.getAttribute('data-tool-name');
+        const toolModelo = element.getAttribute('data-tool-modelo');
+        const toolFabricante = element.getAttribute('data-tool-fabricante');
+        const toolSerie = element.getAttribute('data-tool-serie');
+        const toolReparacion = element.getAttribute('data-tool-reparacion');
+
+        // Actualizamos todos los campos del formulario
+        document.getElementById('id_herramienta').value = toolPk;
+        document.getElementById('id_text_search').value = toolName;
+        document.getElementById('id_modelo_display').value = toolModelo;
+        document.getElementById('id_fabricante_display').value = toolFabricante;
+        document.getElementById('id_numero_serie_display').value = toolSerie;
+        document.getElementById('id_numero_reparacion_display').value = toolReparacion;
+
+        // Limpiamos la lista de resultados
+        document.getElementById('search-results').innerHTML = '';
+    }
+</script>
 </body>
 </html>
