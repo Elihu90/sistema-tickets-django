@@ -25,7 +25,9 @@ SECRET_KEY = 'django-insecure-d17c_jl)q2x=))x95ps%8_2pw)@2jv(5(b99s^*45s42f5+@7t
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+
+ALLOWED_HOSTS = ['127.0.0.1', '.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 
 # Application definition
@@ -143,7 +145,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # URL a la que se redirige si el usuario no ha iniciado sesión
-LOGIN_URL = 'cuentas/login/'
+LOGIN_URL = '/cuentas/login/'
 
 # URL a la que se redirige DESPUÉS de un inicio de sesión exitoso
 LOGIN_REDIRECT_URL =  '/tickets/lista/'
