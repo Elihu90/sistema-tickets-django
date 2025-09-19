@@ -149,3 +149,6 @@ LOGIN_URL = '/cuentas/login/'
 
 # URL a la que se redirige DESPUÉS de un inicio de sesión exitoso
 LOGIN_REDIRECT_URL =  '/tickets/lista/'
+
+# Imprime los correos en la consola en lugar de enviarlos
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

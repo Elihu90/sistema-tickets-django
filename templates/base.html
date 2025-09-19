@@ -14,6 +14,22 @@
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown"
+                               hx-get="{% url 'ver_notificaciones' %}"
+                               hx-target="#lista-notificaciones"
+                               hx-trigger="click">
+                                <span class="position-relative">
+                                    🔔
+                                    <span id="contador-notificaciones"
+                                          hx-get="{% url 'contar_notificaciones_sin_leer' %}"
+                                          hx-trigger="load, every 60s">
+                                    </span>
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" id="lista-notificaciones">
+                                </ul>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'crear_ticket' %}">Crear Ticket</a>
                         </li>
@@ -45,33 +61,29 @@
     </main>
 
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-</main>
+    <script>
+        function selectTool(element) {
+            // Obtenemos todos los datos desde los atributos data-*
+            const toolPk = element.getAttribute('data-tool-pk');
+            const toolName = element.getAttribute('data-tool-name');
+            const toolModelo = element.getAttribute('data-tool-modelo');
+            const toolFabricante = element.getAttribute('data-tool-fabricante');
+            const toolSerie = element.getAttribute('data-tool-serie');
+            const toolReparacion = element.getAttribute('data-tool-reparacion');
 
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+            // Actualizamos todos los campos del formulario
+            document.getElementById('id_herramienta').value = toolPk;
+            document.getElementById('id_text_search').value = toolName;
+            document.getElementById('id_modelo_display').value = toolModelo;
+            document.getElementById('id_fabricante_display').value = toolFabricante;
+            document.getElementById('id_numero_serie_display').value = toolSerie;
+            document.getElementById('id_numero_reparacion_display').value = toolReparacion;
 
-
-<script>
-    function selectTool(element) {
-        // Obtenemos todos los datos desde los atributos data-*
-        const toolPk = element.getAttribute('data-tool-pk');
-        const toolName = element.getAttribute('data-tool-name');
-        const toolModelo = element.getAttribute('data-tool-modelo');
-        const toolFabricante = element.getAttribute('data-tool-fabricante');
-        const toolSerie = element.getAttribute('data-tool-serie');
-        const toolReparacion = element.getAttribute('data-tool-reparacion');
-
-        // Actualizamos todos los campos del formulario
-        document.getElementById('id_herramienta').value = toolPk;
-        document.getElementById('id_text_search').value = toolName;
-        document.getElementById('id_modelo_display').value = toolModelo;
-        document.getElementById('id_fabricante_display').value = toolFabricante;
-        document.getElementById('id_numero_serie_display').value = toolSerie;
-        document.getElementById('id_numero_reparacion_display').value = toolReparacion;
-
-        // Limpiamos la lista de resultados
-        document.getElementById('search-results').innerHTML = '';
-    }
-</script>
+            // Limpiamos la lista de resultados
+            document.getElementById('search-results').innerHTML = '';
+        }
+    </script>
 </body>
 </html>

@@ -1,52 +1,59 @@
-# tickets/forms.py
-
 from django import forms
 from .models import Ticket
 from usuarios.models import GrupoNotificacion
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field, HTML, Submit
 
-# ... (TACTO_CHOICES y OPERACION_CHOICES se quedan igual) ...
+# --- Opciones para campos Choice ---
 TACTO_CHOICES = [('', 'Seleccionar Tacto')] + [(str(i), str(i)) for i in range(1, 31)]
 OPERACION_CHOICES = [('', 'Seleccionar Operación')] + [(f'OP {i*10}', f'OP {i*10}') for i in range(1, 16)]
 
+# ==============================================================================
+# FORMULARIO PRINCIPAL PARA CREAR Y EDITAR TICKETS
+# ==============================================================================
 class TicketForm(forms.ModelForm):
-    # ... (campos existentes)
+    # --- Campos que no están en el modelo (para la interfaz) ---
     text_search = forms.CharField(label="Buscar Herramienta", required=False, widget=forms.TextInput(attrs={
         'placeholder': 'Buscar por número de serie o modelo...',
         'hx-post': '/tickets/buscar-herramientas/',
         'hx-trigger': 'keyup changed delay:500ms', 'hx-target': '#search-results',
         'hx-indicator': '.htmx-indicator',
     }))
+    
     modelo_display = forms.CharField(label="Modelo", required=False, disabled=True)
     fabricante_display = forms.CharField(label="Fabricante", required=False, disabled=True)
-
-    # --- NUEVOS CAMPOS DE SOLO LECTURA ---
     numero_serie_display = forms.CharField(label="Número de Serie", required=False, disabled=True)
     numero_reparacion_display = forms.CharField(label="Número de Reparación", required=False, disabled=True)
-
-    # ... (otros campos)
     nombre_reporta = forms.CharField(label="Quien Reporta", required=False, disabled=True)
     puesto_reporta = forms.CharField(label="Puesto", required=False, disabled=True)
     email_reporta = forms.EmailField(label="Correo Electrónico", required=False, disabled=True)
     nave_display = forms.CharField(label="Nave", required=False, disabled=True)
     fecha_actual = forms.CharField(label="Fecha", required=False, disabled=True)
     turno_actual = forms.CharField(label="Turno", required=False, disabled=True)
+
+    # --- Campos del modelo con widgets personalizados ---
     tacto = forms.ChoiceField(choices=TACTO_CHOICES, required=False)
     operacion = forms.ChoiceField(choices=OPERACION_CHOICES, required=False)
-    grupos_notificacion = forms.ModelMultipleChoiceField(queryset=GrupoNotificacion.objects.all(), widget=forms.CheckboxSelectMultiple, label="Notificar a los siguientes grupos", required=False)
-
+    grupos_notificacion = forms.ModelMultipleChoiceField(
+        queryset=GrupoNotificacion.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label="Notificar a los siguientes grupos",
+        required=False
+    )
+    
     class Meta:
         model = Ticket
         fields = ['herramienta', 'falla', 'ubicacion', 'comentarios', 'tacto', 'operacion']
-        widgets = {'herramienta': forms.HiddenInput(), 'comentarios': forms.Textarea(attrs={'rows': 3})}
+        widgets = {
+            'herramienta': forms.HiddenInput(),
+            'comentarios': forms.Textarea(attrs={'rows': 3}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
-            # ... (secciones de Fecha, Quien Reporta, Ubicación)
             Row(Field('fecha_actual', readonly=True), Field('turno_actual', readonly=True)),
             HTML('<hr>'),
             HTML('<h5 class="mb-3">1. Datos de Quien Reporta</h5>'),
@@ -55,22 +62,17 @@ class TicketForm(forms.ModelForm):
             HTML('<h5 class="mb-3">2. Ubicación de la Falla</h5>'),
             Row(Column('ubicacion'), Column('nave_display'), Column('tacto'), Column('operacion')),
             HTML('<hr>'),
-
-            # --- LAYOUT ACTUALIZADO PARA HERRAMIENTAS ---
             HTML('<h5 class="mb-3">3. Datos de la Herramienta</h5>'),
-            'text_search', # Mantenemos la búsqueda principal
+            'text_search',
             HTML('<div class="htmx-indicator">Buscando...</div>'),
             Row(
-                Column('modelo_display', css_class='form-group col-md-6 mb-0'),
-                Column('fabricante_display', css_class='form-group col-md-6 mb-0'),
+                Column('modelo_display'),
+                Column('fabricante_display'),
             ),
-            # Añadimos una nueva fila para los nuevos campos
             Row(
-                Column('numero_serie_display', css_class='form-group col-md-6 mb-0'),
-                Column('numero_reparacion_display', css_class='form-group col-md-6 mb-0'),
+                Column('numero_serie_display'),
+                Column('numero_reparacion_display'),
             ),
-
-            # ... (resto del layout)
             HTML('<div id="search-results" class="list-group mb-3"></div>'),
             'herramienta',
             HTML('<div id="ticket-duplicado-warning"></div>'),
@@ -80,3 +82,14 @@ class TicketForm(forms.ModelForm):
             'grupos_notificacion',
             Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-4 w-100')
         )
+
+# ==============================================================================
+# FORMULARIO PEQUEÑO PARA ACTUALIZAR ESTADO EN LA LISTA
+# ==============================================================================
+class ActualizarEstadoForm(forms.ModelForm):
+    class Meta:
+        model = Ticket
+        fields = ['estado']
+        labels = {
+            'estado': '',
+        }

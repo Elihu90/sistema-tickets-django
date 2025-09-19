@@ -59,3 +59,19 @@ class AuditoriaTicket(models.Model):
 
     class Meta:
         ordering = ['-fecha']
+        
+        
+class Notificacion(models.Model):
+    usuario_destino = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificaciones')
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
+    mensaje = models.CharField(max_length=255)
+    leido = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.mensaje
+
+    class Meta:
+        ordering = ['-fecha_creacion']
+        verbose_name = 'Notificación'
+        verbose_name_plural = 'Notificaciones'
