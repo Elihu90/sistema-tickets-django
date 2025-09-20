@@ -13,6 +13,9 @@ urlpatterns = [
     # URL para actualizar estado
     path('actualizar-estado/<int:pk>/', views.actualizar_estado_ticket, name='actualizar_estado_ticket'),
     
+    # URL para el Dashboard
+    path('dashboard/', views.dashboard_service_line, name='dashboard_service_line'),
+    
     # URL para la búsqueda de HTMX
     path('buscar-herramientas/', views.buscar_herramientas, name='buscar_herramientas'),
     
@@ -20,5 +23,4 @@ urlpatterns = [
     path('notificaciones/', views.ver_notificaciones, name='ver_notificaciones'),
     path('notificaciones/contador/', views.contar_notificaciones_sin_leer, name='contar_notificaciones_sin_leer'),
     path('notificaciones/leer/<int:notificacion_pk>/', views.marcar_leida_y_redirigir, name='marcar_leida_y_redirigir'),
-
 ]

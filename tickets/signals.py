@@ -2,28 +2,34 @@
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group # <-- Añade Group a la importación
 from .models import Ticket, Notificacion
 
 @receiver(post_save, sender=Ticket)
 def crear_notificacion_nuevo_ticket(sender, instance, created, **kwargs):
     """
     Señal que se activa después de que se guarda un ticket para crear notificaciones.
+    Ahora notifica a los miembros del grupo 'Service Line'.
     """
-    # 'created' es True solo si el ticket es nuevo.
     if created:
-        # Buscamos a todos los usuarios que son 'staff' (administradores).
-        usuarios_a_notificar = User.objects.filter(is_staff=True)
-        
-        print(f"Señal activada para el ticket {instance.folio}. Se encontraron {usuarios_a_notificar.count()} usuarios staff.")
+        try:
+            # 1. Buscamos el grupo específico por su nombre
+            service_line_group = Group.objects.get(name='Service Line')
+            # 2. Obtenemos todos los usuarios que pertenecen a ese grupo
+            usuarios_a_notificar = service_line_group.user_set.all()
 
-        for usuario in usuarios_a_notificar:
-            # Evitamos notificar al usuario que creó el ticket
-            if usuario != instance.creado_por:
-                mensaje = f"Nuevo ticket {instance.folio} creado por {instance.creado_por.username}."
-                Notificacion.objects.create(
-                    usuario_destino=usuario,
-                    ticket=instance,
-                    mensaje=mensaje
-                )
-                print(f"Notificación creada para {usuario.username}.")
+            print(f"Señal activada para ticket {instance.folio}. Grupo 'Service Line' encontrado con {usuarios_a_notificar.count()} usuarios.")
+
+            for usuario in usuarios_a_notificar:
+                if usuario != instance.creado_por:
+                    mensaje = f"Nuevo ticket {instance.folio} creado por {instance.creado_por.username}."
+                    Notificacion.objects.create(
+                        usuario_destino=usuario,
+                        ticket=instance,
+                        mensaje=mensaje
+                    )
+                    print(f"Notificación creada para {usuario.username}.")
+
+        except Group.DoesNotExist:
+            # Este mensaje aparecerá si el grupo 'Service Line' no existe
+            print("ADVERTENCIA: El grupo 'Service Line' no existe. No se pueden crear notificaciones.")
