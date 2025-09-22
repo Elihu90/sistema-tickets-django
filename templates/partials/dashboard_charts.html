@@ -1,0 +1,57 @@
+<div class="row text-center mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Tickets por Estado</h5>
+                <canvas id="graficaEstadoTickets"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Tickets por Turno</h5>
+                <canvas id="graficaTurnoTickets"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Función para inicializar o actualizar una gráfica
+    function initOrUpdateChart(ctx, chartInstance, chartType, labels, data, label) {
+        if (chartInstance) {
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets[0].data = data;
+            chartInstance.update();
+            return chartInstance;
+        } else {
+            return new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } } }
+            });
+        }
+    }
+
+    // Obtenemos los contextos de los canvas
+    const ctxEstado = document.getElementById('graficaEstadoTickets').getContext('2d');
+    const ctxTurno = document.getElementById('graficaTurnoTickets').getContext('2d');
+    
+    // Datos pasados desde la vista de Django
+    const estadoLabels = {{ estado_labels|safe }};
+    const estadoData = {{ estado_data|safe }};
+    const turnoLabels = {{ turno_labels|safe }};
+    const turnoData = {{ turno_data|safe }};
+
+    // Creamos o actualizamos las gráficas
+    window.estadoChart = initOrUpdateChart(ctxEstado, window.estadoChart, 'doughnut', estadoLabels, estadoData, 'Tickets por Estado');
+    window.turnoChart = initOrUpdateChart(ctxTurno, window.turnoChart, 'bar', turnoLabels, turnoData, 'Tickets por Turno');
+</script>

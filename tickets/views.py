@@ -6,6 +6,10 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count
 import datetime
+from django.http import JsonResponse
+from django.http import HttpResponse
+
+
 
 from .forms import TicketForm, ActualizarEstadoForm
 from .models import Ticket, TicketEstado, Herramienta, Notificacion
@@ -144,22 +148,30 @@ def eliminar_ticket(request, pk):
 
 @login_required
 def actualizar_estado_ticket(request, pk):
-    """
-    Procesa el cambio de estado desde el dashboard. Solo para staff.
-    """
     if not request.user.has_perm('tickets.change_ticket'):
-        messages.error(request, "No tienes permiso para realizar esta acción.")
-        return redirect('lista_tickets')
+        # Devolvemos un error que también puede ser manejado por el frontend
+        return HttpResponse(status=403) # 403 Forbidden
 
     ticket = get_object_or_404(Ticket, pk=pk)
-    
+
     if request.method == 'POST':
         form = ActualizarEstadoForm(request.POST, instance=ticket)
         if form.is_valid():
             form.save()
-            messages.success(request, f"El estado del ticket {ticket.folio} ha sido actualizado.")
-    
-    return redirect('lista_tickets')
+            mensaje = f"Ticket {ticket.folio} actualizado a '{ticket.estado.nombre}'."
+
+            # Creamos una respuesta vacía con una cabecera HX-Trigger
+            response = HttpResponse(status=204) # 204 = Éxito, Sin Contenido
+            response.headers['HX-Trigger'] = f'{{"showToast": {{"text": "{mensaje}", "type": "success"}}}}'
+            return response
+        else:
+            # Si hay errores en el formulario
+            mensaje = "Error al actualizar el ticket."
+            response = HttpResponse(status=400) # 400 = Petición Inválida
+            response.headers['HX-Trigger'] = f'{{"showToast": {{"text": "{mensaje}", "type": "error"}}}}'
+            return response
+
+    return HttpResponse(status=405) # 405 = Método no permitido si no es POST
 
 
 def buscar_herramientas(request):
@@ -177,20 +189,29 @@ def buscar_herramientas(request):
 @login_required
 def ver_notificaciones(request):
     """
-    Vista para HTMX: Muestra las notificaciones NO leídas.
+    CORREGIDO: Esta vista ahora SOLO muestra las notificaciones, NO las marca como leídas.
     """
     notificaciones = Notificacion.objects.filter(usuario_destino=request.user, leido=False)
     return render(request, 'partials/lista_notificaciones.html', {'notificaciones': notificaciones})
 
 
+# tickets/views.py
+
 @login_required
 def contar_notificaciones_sin_leer(request):
-    """
-    Vista para HTMX: Devuelve la cantidad de notificaciones no leídas para el badge.
-    """
-    cantidad = Notificacion.objects.filter(usuario_destino=request.user, leido=False).count()
-    return render(request, 'partials/contador_notificaciones.html', {'cantidad_notificaciones': cantidad})
+    print("--- Depurando la vista del contador de notificaciones ---")
 
+    # 1. Verificamos quién es el usuario que está pidiendo la información
+    print(f"Usuario de la petición: {request.user.username} (ID: {request.user.id})")
+
+    # 2. Hacemos la consulta a la base de datos
+    cantidad = Notificacion.objects.filter(usuario_destino=request.user, leido=False).count()
+
+    # 3. Vemos qué resultado nos dio la consulta
+    print(f"Notificaciones sin leer encontradas para este usuario: {cantidad}")
+    print("-----------------------------------------------------")
+
+    return render(request, 'partials/contador_notificaciones.html', {'cantidad_notificaciones': cantidad})
 
 @login_required
 def marcar_leida_y_redirigir(request, notificacion_pk):
@@ -207,41 +228,81 @@ def dashboard_service_line(request):
     if not request.user.is_staff:
         return redirect('lista_tickets')
 
-    # --- 1. Lógica de Filtro de Fechas ---
-    end_date = timezone.now()
-    start_date = end_date - datetime.timedelta(days=7) # Por defecto, la última semana
+    # --- 1. Lógica de Filtros de Fecha ---
+    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
+    start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
+    
+    start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
+    # Añadimos 1 día al final para incluir todos los tickets de ese día
+    end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
 
-    # Si el usuario envía fechas en el formulario, las usamos
-    if request.GET.get('start_date'):
-        start_date = datetime.datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').astimezone(timezone.get_current_timezone())
-    if request.GET.get('end_date'):
-        end_date = datetime.datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d').astimezone(timezone.get_current_timezone())
-
-    # Filtramos todos los tickets por el rango de fechas seleccionado
     tickets_en_rango = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
 
     # --- 2. Cálculo de Estadísticas ---
-    # A. ¿Cuántos tickets hay de cada estado?
-    conteo_por_estado = tickets_en_rango.values('estado__nombre').annotate(total=Count('id')).order_by('-total')
+    conteo_por_estado = tickets_en_rango.values('estado__nombre').annotate(total=Count('id')).order_by()
+    conteo_por_turno = tickets_en_rango.values('turno').annotate(total=Count('id')).order_by()
 
-    # B. ¿Cuántos tickets hay por cada turno?
-    conteo_por_turno = tickets_en_rango.values('turno').annotate(total=Count('id')).order_by('-total')
+    contexto_graficas = {
+        'estado_labels': [item['estado__nombre'] for item in conteo_por_estado],
+        'estado_data': [item['total'] for item in conteo_por_estado],
+        'turno_labels': [item['turno'] or 'No asignado' for item in conteo_por_turno],
+        'turno_data': [item['total'] for item in conteo_por_turno],
+    }
 
-    # C. Tickets que necesitan atención (abiertos por más de 3 días)
-    hace_3_dias = timezone.now() - datetime.timedelta(days=3)
-    tickets_criticos = Ticket.objects.filter(estado__nombre__in=['Abierto', 'En Reparacion'], fecha_creacion__lt=hace_3_dias)
+    # --- 3. Lógica de Respuesta (HTMX vs. Normal) ---
+    if request.htmx:
+        # Si la petición viene de HTMX (desde el filtro), devolvemos solo el parcial de las gráficas
+        return render(request, 'partials/dashboard_charts.html', contexto_graficas)
 
-    # La lista principal de tickets también respeta el filtro de fecha
+    # Si es una carga normal de la página, preparamos el contexto completo
     lista_de_tickets = tickets_en_rango.order_by('-fecha_creacion')
     for ticket in lista_de_tickets:
         ticket.form_estado = ActualizarEstadoForm(instance=ticket)
+        
+    contexto_completo = {
+        'tickets': lista_de_tickets,
+        'start_date_value': start_date_str,
+        'end_date_value': end_date_str,
+        'todos_los_estados': TicketEstado.objects.all(),
+        'todos_los_usuarios': User.objects.filter(tickets_creados__isnull=False).distinct(),
+        'contexto_graficas': contexto_graficas, # Pasamos los datos de las gráficas
+    }
+    return render(request, 'tickets/dashboard.html', contexto_completo)
+
+
+def verificar_ticket_duplicado(request, herramienta_pk):
+    """
+    Vista para HTMX: Busca tickets abiertos o en reparación para una herramienta específica.
+    """
+    # Buscamos tickets para esa herramienta cuyo estado NO sea 'Cerrado'
+    tickets_abiertos = Ticket.objects.filter(
+        herramienta_id=herramienta_pk
+    ).exclude(
+        estado__nombre='Cerrado'
+    )
 
     contexto = {
-        'tickets': lista_de_tickets,
-        'conteo_por_estado': conteo_por_estado,
-        'conteo_por_turno': conteo_por_turno,
-        'tickets_criticos': tickets_criticos,
-        'start_date_value': start_date.strftime('%Y-%m-%d'),
-        'end_date_value': end_date.strftime('%Y-%m-%d'),
+        'tickets_duplicados': tickets_abiertos
     }
-    return render(request, 'tickets/dashboard.html', contexto)
+    # Renderiza la plantilla parcial que mostrará la advertencia
+    return render(request, 'partials/advertencia_duplicado.html', contexto)
+
+
+
+@login_required
+def ticket_estado_data(request):
+    # Esta vista solo es accesible para el personal de staff
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Acceso denegado'}, status=403)
+
+    # Contamos cuántos tickets hay en cada estado
+    conteo = Ticket.objects.values('estado__nombre').annotate(total=Count('id'))
+
+    # Preparamos los datos en el formato que Chart.js necesita
+    labels = [item['estado__nombre'] for item in conteo]
+    data = [item['total'] for item in conteo]
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data,
+    })

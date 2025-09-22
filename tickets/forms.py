@@ -1,3 +1,5 @@
+# tickets/forms.py
+
 from django import forms
 from .models import Ticket
 from usuarios.models import GrupoNotificacion
@@ -79,7 +81,11 @@ class TicketForm(forms.ModelForm):
             HTML('<hr>'),
             HTML('<h5 class="mb-3">4. Descripción de la Falla y Notificación</h5>'),
             Row(Column('falla'), Column('comentarios')),
+            
+            HTML('<div class="card mt-3"><div class="card-body">'),
             'grupos_notificacion',
+            HTML('</div></div>'),
+            
             Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-4 w-100')
         )
 

@@ -1,18 +1,30 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>Sistema de Tickets</title>
+
+    <script>
+        (function() {
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme) {
+                document.documentElement.setAttribute('data-bs-theme', storedTheme);
+                return;
+            }
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
+        })();
+    </script>
 </head>
-<body class="bg-light" hx-get="{% url 'contar_notificaciones_sin_leer' %}" hx-target="#contador-notificaciones" hx-trigger="load">
+<body class="bg-body-tertiary" hx-get="{% url 'contar_notificaciones_sin_leer' %}" hx-target="#contador-notificaciones" hx-trigger="load">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">Generador de Tickets</a>
+            <a class="navbar-brand" href="{% url 'lista_tickets' %}">Gestor de Tickets</a>
             <div class="collapse navbar-collapse">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
                     {% if user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown"
@@ -28,9 +40,14 @@
                                 </span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" id="lista-notificaciones">
-                                </ul>
+                            </ul>
                         </li>
 
+                        {% if user.is_staff %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'dashboard_service_line' %}">Dashboard</a>
+                            </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'crear_ticket' %}">Crear Ticket</a>
                         </li>
@@ -51,40 +68,101 @@
                             <a class="nav-link" href="{% url 'login' %}">Iniciar Sesión</a>
                         </li>
                     {% endif %}
+
+                    <li class="nav-item ms-2">
+                        <a href="#" id="theme-toggle" class="nav-link">
+                            <span class="theme-icon-light">☀️</span>
+                            <span class="theme-icon-dark" style="display: none;">🌙</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <main class="container mt-4">
+    <main class="container mt-4" id="main-content">
         {% block content %}
         {% endblock %}
     </main>
 
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    {% block extra_js %}{% endblock %}
 
     <script>
-        function selectTool(element) {
-            // Obtenemos todos los datos desde los atributos data-*
-            const toolPk = element.getAttribute('data-tool-pk');
-            const toolName = element.getAttribute('data-tool-name');
-            const toolModelo = element.getAttribute('data-tool-modelo');
-            const toolFabricante = element.getAttribute('data-tool-fabricante');
-            const toolSerie = element.getAttribute('data-tool-serie');
-            const toolReparacion = element.getAttribute('data-tool-reparacion');
+        // Lógica para el interruptor de tema
+        const themeToggle = document.getElementById('theme-toggle');
+        const sunIcon = document.querySelector('.theme-icon-light');
+        const moonIcon = document.querySelector('.theme-icon-dark');
 
-            // Actualizamos todos los campos del formulario
-            document.getElementById('id_herramienta').value = toolPk;
-            document.getElementById('id_text_search').value = toolName;
-            document.getElementById('id_modelo_display').value = toolModelo;
-            document.getElementById('id_fabricante_display').value = toolFabricante;
-            document.getElementById('id_numero_serie_display').value = toolSerie;
-            document.getElementById('id_numero_reparacion_display').value = toolReparacion;
-
-            // Limpiamos la lista de resultados
-            document.getElementById('search-results').innerHTML = '';
+        function updateIcon() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+            if (currentTheme === 'dark') {
+                sunIcon.style.display = 'none'; moonIcon.style.display = 'inline';
+            } else {
+                sunIcon.style.display = 'inline'; moonIcon.style.display = 'none';
+            }
         }
+
+        themeToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateIcon();
+        });
+
+        // Lógica para el formulario de selección de herramienta
+        function selectTool(element) {
+    // Obtenemos todos los datos desde los atributos data-*
+    const toolPk = element.getAttribute('data-tool-pk');
+    const toolName = element.getAttribute('data-tool-name');
+    const toolModelo = element.getAttribute('data-tool-modelo');
+    const toolFabricante = element.getAttribute('data-tool-fabricante');
+    const toolSerie = element.getAttribute('data-tool-serie');
+    const toolReparacion = element.getAttribute('data-tool-reparacion');
+
+    // Actualizamos todos los campos del formulario
+    document.getElementById('id_herramienta').value = toolPk;
+    document.getElementById('id_text_search').value = toolName;
+    document.getElementById('id_modelo_display').value = toolModelo;
+    document.getElementById('id_fabricante_display').value = toolFabricante;
+    document.getElementById('id_numero_serie_display').value = toolSerie;
+    document.getElementById('id_numero_reparacion_display').value = toolReparacion;
+
+    // Limpiamos la lista de resultados
+    document.getElementById('search-results').innerHTML = '';
+
+    // --- LÓGICA DE VERIFICACIÓN AÑADIDA ---
+    const warningDiv = document.getElementById('ticket-duplicado-warning');
+    if (toolPk) {
+        // Construimos la URL y le decimos a HTMX que la procese
+        const url = `/tickets/verificar-duplicado/${toolPk}/`;
+        htmx.ajax('GET', url, {target: warningDiv, swap: 'innerHTML'});
+    } else {
+        // Si por alguna razón no hay ID, limpiamos el div de advertencia
+        warningDiv.innerHTML = '';
+    }
+}
+        // Lógica para escuchar las alertas flotantes de SweetAlert2
+        document.body.addEventListener('showToast', function (event) {
+            const detail = event.detail;
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: detail.type,
+                title: detail.text,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        });
+
+        // Actualiza el ícono del tema al cargar la página
+        updateIcon();
     </script>
+
 </body>
 </html>

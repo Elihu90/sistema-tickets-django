@@ -19,6 +19,13 @@ urlpatterns = [
     # URL para la búsqueda de HTMX
     path('buscar-herramientas/', views.buscar_herramientas, name='buscar_herramientas'),
     
+    # --- NUEVA URL PARA VERIFICAR DUPLICADOS ---
+    path('verificar-duplicado/<int:herramienta_pk>/', views.verificar_ticket_duplicado, name='verificar_ticket_duplicado'),
+    
+        # --- NUEVA URL PARA LOS DATOS DE LA GRÁFICA ---
+    path('data/tickets-por-estado/', views.ticket_estado_data, name='ticket_estado_data'),
+    
+    
     # URLs para Notificaciones
     path('notificaciones/', views.ver_notificaciones, name='ver_notificaciones'),
     path('notificaciones/contador/', views.contar_notificaciones_sin_leer, name='contar_notificaciones_sin_leer'),
