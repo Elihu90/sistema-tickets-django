@@ -229,48 +229,64 @@ def dashboard_service_line(request):
     if not request.user.is_staff:
         return redirect('lista_tickets')
 
-    # --- Lógica de Filtros de Fecha (sin cambios) ---
-    end_date = timezone.now()
-    start_date = end_date - datetime.timedelta(days=7)
+    # --- 1. Recopilar y aplicar todos los filtros ---
+    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
+    start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
+    estado_filtro = request.GET.get('estado')
+    turno_filtro = request.GET.get('turno')
+    fabricante_filtro = request.GET.get('fabricante')
 
-    if request.GET.get('start_date'):
-        start_date = datetime.datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').astimezone(timezone.get_current_timezone())
-    if request.GET.get('end_date'):
-        end_date = datetime.datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d').astimezone(timezone.get_current_timezone())
+    start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
+    end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
+    
+    tickets_query = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
+    if estado_filtro: tickets_query = tickets_query.filter(estado__id=estado_filtro)
+    if turno_filtro: tickets_query = tickets_query.filter(turno=turno_filtro)
+    if fabricante_filtro: tickets_query = tickets_query.filter(herramienta__fabricante=fabricante_filtro)
 
-    tickets_en_rango = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
-
-    # --- Cálculo de Estadísticas ---
-    conteo_por_estado = tickets_en_rango.values('estado__nombre').annotate(total=Count('id')).order_by('-total')
-
-    total_tickets = tickets_en_rango.count()
-    tickets_cerrados = tickets_en_rango.filter(estado__nombre='Cerrado').count()
-    porcentaje_eficiencia = round((tickets_cerrados / total_tickets) * 100, 2) if total_tickets > 0 else 0
-
-    # --- NUEVA LÓGICA: Top 5 Herramientas con más fallas por modelo ---
-    top_herramientas_fallas = tickets_en_rango.values(
-        'herramienta__modelo' # Agrupamos por el modelo de la herramienta
-    ).annotate(
-        total=Count('herramienta__modelo') # Contamos cuántos tickets tiene cada modelo
-    ).order_by('-total')[:5] # Ordenamos de mayor a menor y tomamos los 5 primeros
-
+    # --- 2. Calcular todas las estadísticas y KPIs ---
+    
+    # Gráfica de Estados
+    conteo_por_estado = tickets_query.values('estado__nombre').annotate(total=Count('id')).order_by()
+    color_map = {'Abierto': '#FF6384', 'En Reparacion': '#FFCE56', 'Cerrado': '#4BC0C0'}
+    
+    # Gráfica de Turnos
+    conteo_por_turno = tickets_query.values('turno').annotate(total=Count('id')).order_by()
+    
+    # KPI de Eficiencia Ponderada
+    total_tickets = tickets_query.count()
+    tickets_cerrados_count = tickets_query.filter(estado__nombre='Cerrado').count()
+    tickets_reparacion_count = tickets_query.filter(estado__nombre='En Reparacion').count()
+    puntaje = (tickets_cerrados_count * 1) + (tickets_reparacion_count * 0.5)
+    eficiencia_ponderada = round((puntaje / total_tickets) * 100, 1) if total_tickets > 0 else 0
+    
+    # Listas "Top 5"
+    top_herramientas_fallas = tickets_query.values('herramienta__modelo').annotate(total=Count('id')).order_by('-total')[:5]
     top_tickets_antiguos = Ticket.objects.exclude(estado__nombre='Cerrado').order_by('fecha_creacion')[:5]
 
-    lista_de_tickets = tickets_en_rango.order_by('-fecha_creacion')
-    for ticket in lista_de_tickets:
-        ticket.form_estado = ActualizarEstadoForm(instance=ticket)
-
-    contexto = {
-        'tickets': lista_de_tickets,
-        'conteo_por_estado': conteo_por_estado,
-        'start_date_value': start_date.strftime('%Y-%m-%d'),
-        'end_date_value': end_date.strftime('%Y-%m-%d'),
-        'porcentaje_eficiencia': porcentaje_eficiencia,
-        'total_tickets': total_tickets,
+    # --- 3. Preparar el contexto completo para la plantilla ---
+    contexto_completo = {
+        'tickets': tickets_query.order_by('-fecha_creacion'),
+        'start_date_value': start_date_str, 'end_date_value': end_date_str,
+        'eficiencia_ponderada': eficiencia_ponderada,
         'top_tickets_antiguos': top_tickets_antiguos,
-        'top_herramientas_fallas': top_herramientas_fallas, # <-- Pasamos los nuevos datos
+        'top_herramientas_fallas': top_herramientas_fallas,
+        'opciones_estado': TicketEstado.objects.all(),
+        'opciones_turno': Ticket.objects.filter(turno__isnull=False).values_list('turno', flat=True).distinct(),
+        'opciones_fabricante': Herramienta.objects.values_list('fabricante', flat=True).distinct(),
+        'contexto_graficas': {
+            'estado_labels': [item['estado__nombre'] for item in conteo_por_estado],
+            'estado_data': [item['total'] for item in conteo_por_estado],
+            'estado_colors': [color_map.get(item['estado__nombre'], '#CCCCCC') for item in conteo_por_estado],
+            'turno_labels': [item['turno'] or 'No asignado' for item in conteo_por_turno],
+            'turno_data': [item['total'] for item in conteo_por_turno],
+        }
     }
-    return render(request, 'tickets/dashboard.html', contexto)
+
+    for ticket in contexto_completo['tickets']:
+        ticket.form_estado = ActualizarEstadoForm(instance=ticket)
+    
+    return render(request, 'tickets/dashboard.html', contexto_completo)
 
 
 
