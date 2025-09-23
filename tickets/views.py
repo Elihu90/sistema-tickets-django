@@ -223,51 +223,56 @@ def marcar_leida_y_redirigir(request, notificacion_pk):
     notificacion.save()
     return redirect('detalles_ticket', pk=notificacion.ticket.pk)
 
+
 @login_required
 def dashboard_service_line(request):
     if not request.user.is_staff:
         return redirect('lista_tickets')
 
-    # --- 1. Lógica de Filtros de Fecha ---
-    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
-    start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
-    
-    start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
-    # Añadimos 1 día al final para incluir todos los tickets de ese día
-    end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
+    # --- Lógica de Filtros de Fecha (sin cambios) ---
+    end_date = timezone.now()
+    start_date = end_date - datetime.timedelta(days=7)
+
+    if request.GET.get('start_date'):
+        start_date = datetime.datetime.strptime(request.GET.get('start_date'), '%Y-%m-%d').astimezone(timezone.get_current_timezone())
+    if request.GET.get('end_date'):
+        end_date = datetime.datetime.strptime(request.GET.get('end_date'), '%Y-%m-%d').astimezone(timezone.get_current_timezone())
 
     tickets_en_rango = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
 
-    # --- 2. Cálculo de Estadísticas ---
-    conteo_por_estado = tickets_en_rango.values('estado__nombre').annotate(total=Count('id')).order_by()
-    conteo_por_turno = tickets_en_rango.values('turno').annotate(total=Count('id')).order_by()
+    # --- Cálculo de Estadísticas ---
+    conteo_por_estado = tickets_en_rango.values('estado__nombre').annotate(total=Count('id')).order_by('-total')
 
-    contexto_graficas = {
-        'estado_labels': [item['estado__nombre'] for item in conteo_por_estado],
-        'estado_data': [item['total'] for item in conteo_por_estado],
-        'turno_labels': [item['turno'] or 'No asignado' for item in conteo_por_turno],
-        'turno_data': [item['total'] for item in conteo_por_turno],
-    }
+    total_tickets = tickets_en_rango.count()
+    tickets_cerrados = tickets_en_rango.filter(estado__nombre='Cerrado').count()
+    porcentaje_eficiencia = round((tickets_cerrados / total_tickets) * 100, 2) if total_tickets > 0 else 0
 
-    # --- 3. Lógica de Respuesta (HTMX vs. Normal) ---
-    if request.htmx:
-        # Si la petición viene de HTMX (desde el filtro), devolvemos solo el parcial de las gráficas
-        return render(request, 'partials/dashboard_charts.html', contexto_graficas)
+    # --- NUEVA LÓGICA: Top 5 Herramientas con más fallas por modelo ---
+    top_herramientas_fallas = tickets_en_rango.values(
+        'herramienta__modelo' # Agrupamos por el modelo de la herramienta
+    ).annotate(
+        total=Count('herramienta__modelo') # Contamos cuántos tickets tiene cada modelo
+    ).order_by('-total')[:5] # Ordenamos de mayor a menor y tomamos los 5 primeros
 
-    # Si es una carga normal de la página, preparamos el contexto completo
+    top_tickets_antiguos = Ticket.objects.exclude(estado__nombre='Cerrado').order_by('fecha_creacion')[:5]
+
     lista_de_tickets = tickets_en_rango.order_by('-fecha_creacion')
     for ticket in lista_de_tickets:
         ticket.form_estado = ActualizarEstadoForm(instance=ticket)
-        
-    contexto_completo = {
+
+    contexto = {
         'tickets': lista_de_tickets,
-        'start_date_value': start_date_str,
-        'end_date_value': end_date_str,
-        'todos_los_estados': TicketEstado.objects.all(),
-        'todos_los_usuarios': User.objects.filter(tickets_creados__isnull=False).distinct(),
-        'contexto_graficas': contexto_graficas, # Pasamos los datos de las gráficas
+        'conteo_por_estado': conteo_por_estado,
+        'start_date_value': start_date.strftime('%Y-%m-%d'),
+        'end_date_value': end_date.strftime('%Y-%m-%d'),
+        'porcentaje_eficiencia': porcentaje_eficiencia,
+        'total_tickets': total_tickets,
+        'top_tickets_antiguos': top_tickets_antiguos,
+        'top_herramientas_fallas': top_herramientas_fallas, # <-- Pasamos los nuevos datos
     }
-    return render(request, 'tickets/dashboard.html', contexto_completo)
+    return render(request, 'tickets/dashboard.html', contexto)
+
+
 
 
 def verificar_ticket_duplicado(request, herramienta_pk):
@@ -291,18 +296,45 @@ def verificar_ticket_duplicado(request, herramienta_pk):
 
 @login_required
 def ticket_estado_data(request):
-    # Esta vista solo es accesible para el personal de staff
     if not request.user.is_staff:
         return JsonResponse({'error': 'Acceso denegado'}, status=403)
 
-    # Contamos cuántos tickets hay en cada estado
     conteo = Ticket.objects.values('estado__nombre').annotate(total=Count('id'))
-
-    # Preparamos los datos en el formato que Chart.js necesita
+    
+    # --- LÓGICA DE COLORES AÑADIDA ---
+    color_map = {
+        'Abierto': 'rgba(255, 99, 132, 0.7)',   # Rojo
+        'En Reparacion': 'rgba(255, 206, 86, 0.7)', # Amarillo
+        'Cerrado': 'rgba(75, 192, 192, 0.7)',    # Verde
+    }
+    
     labels = [item['estado__nombre'] for item in conteo]
     data = [item['total'] for item in conteo]
+    # Creamos una lista de colores en el mismo orden que las etiquetas
+    background_colors = [color_map.get(label, '#CCCCCC') for label in labels] # Gris por defecto
 
     return JsonResponse({
         'labels': labels,
         'data': data,
+        'colors': background_colors, # Enviamos los colores al frontend
     })
+    
+    
+    
+@login_required
+def detalles_modelo_modal(request):
+    # Solo para staff
+    if not request.user.is_staff:
+        return redirect('lista_tickets')
+
+    # Obtenemos el nombre del modelo desde los parámetros de la URL
+    modelo_nombre = request.GET.get('modelo', None)
+    tickets_del_modelo = []
+    if modelo_nombre:
+        tickets_del_modelo = Ticket.objects.filter(herramienta__modelo=modelo_nombre).order_by('-fecha_creacion')
+
+    contexto = {
+        'tickets': tickets_del_modelo,
+        'modelo_nombre': modelo_nombre
+    }
+    return render(request, 'partials/modal_detalles_modelo.html', contexto)

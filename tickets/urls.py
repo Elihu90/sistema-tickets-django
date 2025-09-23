@@ -26,6 +26,11 @@ urlpatterns = [
     path('data/tickets-por-estado/', views.ticket_estado_data, name='ticket_estado_data'),
     
     
+       # --- NUEVA URL PARA EL CONTENIDO DEL MODAL ---
+    path('modal/detalles-modelo/', views.detalles_modelo_modal, name='modal_detalles_modelo'),
+
+    
+    
     # URLs para Notificaciones
     path('notificaciones/', views.ver_notificaciones, name='ver_notificaciones'),
     path('notificaciones/contador/', views.contar_notificaciones_sin_leer, name='contar_notificaciones_sin_leer'),
