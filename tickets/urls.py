@@ -26,10 +26,10 @@ urlpatterns = [
     path('data/tickets-por-estado/', views.ticket_estado_data, name='ticket_estado_data'),
     
     
-       # --- NUEVA URL PARA EL CONTENIDO DEL MODAL ---
-    path('modal/detalles-modelo/', views.detalles_modelo_modal, name='modal_detalles_modelo'),
-
+# --- URL ÚNICA PARA TODOS LOS DETALLES EN POP-UP ---
+    path('modal/detalles-filtrados/', views.detalles_filtrados_modal, name='modal_detalles_filtrados'),
     
+
     
     # URLs para Notificaciones
     path('notificaciones/', views.ver_notificaciones, name='ver_notificaciones'),

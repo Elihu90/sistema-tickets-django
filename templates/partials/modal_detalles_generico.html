@@ -1,7 +1,7 @@
 <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title">Tickets para el Modelo: {{ modelo_nombre }}</h5>
+            <h5 class="modal-title">{{ titulo_modal }}</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -9,13 +9,13 @@
                 <ul class="list-group">
                     {% for ticket in tickets %}
                         <li class="list-group-item">
-                            <a href="{% url 'detalles_ticket' ticket.pk %}"><strong>{{ ticket.folio }}</strong></a> - Estado: {{ ticket.estado.nombre }}
+                            <a href="{% url 'detalles_ticket' ticket.pk %}" target="_blank"><strong>{{ ticket.folio }}</strong></a> - Herramienta: {{ ticket.herramienta.modelo }}
                             <small class="d-block text-muted">Creado por {{ ticket.creado_por.username }} el {{ ticket.fecha_creacion|date:"d/m/Y" }}</small>
                         </li>
                     {% endfor %}
                 </ul>
             {% else %}
-                <p>No se encontraron tickets para este modelo.</p>
+                <p>No se encontraron tickets para esta selección.</p>
             {% endif %}
         </div>
         <div class="modal-footer">

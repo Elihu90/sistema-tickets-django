@@ -28,9 +28,19 @@
         <p><strong>Comentarios Adicionales:</strong></p>
         <p>{{ ticket.comentarios|linebreaksbr }}</p>
     </div>
-    <div class="card-footer">
+    <div class="card-footer text-end">
+    {% if user.is_staff %}
+        <a href="{% url 'dashboard_service_line' %}" class="btn btn-secondary">Volver al Dashboard</a>
+    {% else %}
         <a href="{% url 'lista_tickets' %}" class="btn btn-secondary">Volver a la Lista</a>
-        <a href="{% url 'editar_ticket' ticket.pk %}" class="btn btn-warning">Editar Ticket</a>
-        </div>
+    {% endif %}
+    <a href="{% url 'lista_tickets' %}" class="btn btn-secondary">Volver a la Lista</a>
+    <a href="{% url 'editar_ticket' ticket.pk %}" class="btn btn-warning">Editar Ticket</a>
+
+    {% if user.is_staff %}
+        <a href="{% url 'eliminar_ticket' ticket.pk %}" class="btn btn-danger">Eliminar Ticket</a>
+    {% endif %}
 </div>
 {% endblock %}
+
+

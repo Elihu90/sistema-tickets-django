@@ -16,7 +16,7 @@
         <div class="row text-center mb-4">
             <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Tickets por Estado</h5><div class="position-relative"><canvas id="graficaEstadoTickets"></canvas><div class="position-absolute top-50 start-50 translate-middle" style="font-size: 1.8rem; font-weight: bold;">{{ eficiencia_ponderada }}%</div></div></div></div></div>
             <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Tickets por Turno</h5><canvas id="graficaTurnoTickets"></canvas></div></div></div>
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Top 5 Herramientas con Más Fallas</h5><div class="list-group list-group-flush">{% for item in top_herramientas_fallas %}<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" hx-get="{% url 'modal_detalles_modelo' %}?modelo={{ item.herramienta__modelo }}" hx-target="#modal-container">{{ item.herramienta__modelo|default:"N/A" }}<span class="badge bg-danger rounded-pill">{{ item.total }}</span></a>{% empty %}<li class="list-group-item">No hay datos.</li>{% endfor %}</div></div></div></div>
+            <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Top 5 Herramientas con Más Fallas</h5><div class="list-group list-group-flush">{% for item in top_herramientas_fallas %}<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" hx-get="{% url 'modal_detalles_filtrados' %}?filtro_tipo=modelo&filtro_valor={{ item.herramienta__modelo }}" hx-target="#modal-container">{{ item.herramienta__modelo|default:"N/A" }}<span class="badge bg-danger rounded-pill">{{ item.total }}</span></a>{% empty %}<li class="list-group-item">No hay datos.</li>{% endfor %}</div></div></div></div>
         </div>
 
         <div class="row mt-4">
@@ -34,39 +34,53 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- Función que maneja los clics en las gráficas ---
+        function handleChartClick(event, elements, chart) {
+            if (elements.length === 0) return;
+            const clickedElementIndex = elements[0].index;
+            const label = chart.data.labels[clickedElementIndex];
+            let filtro_tipo = '';
+            
+            if (chart.canvas.id === 'graficaEstadoTickets') {
+                filtro_tipo = 'estado';
+            } else if (chart.canvas.id === 'graficaTurnoTickets') {
+                filtro_tipo = 'turno';
+            }
+
+            if (filtro_tipo) {
+                const url = `{% url 'modal_detalles_filtrados' %}?filtro_tipo=${filtro_tipo}&filtro_valor=${encodeURIComponent(label)}`;
+                htmx.ajax('GET', url, {target: '#modal-container'});
+            }
+        }
+
         // --- GRÁFICA DE ESTADOS (DONA) ---
         const canvasEstado = document.getElementById('graficaEstadoTickets');
         if (canvasEstado) {
-            const ctx = canvasEstado.getContext('2d');
-            new Chart(ctx, {
+            new Chart(canvasEstado.getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: {{ contexto_graficas.estado_labels|safe }},
-                    datasets: [{
-                        data: {{ contexto_graficas.estado_data|safe }},
-                        backgroundColor: {{ contexto_graficas.estado_colors|safe }},
-                        borderWidth: 1
-                    }]
+                    datasets: [{ data: {{ contexto_graficas.estado_data|safe }}, backgroundColor: {{ contexto_graficas.estado_colors|safe }}, borderWidth: 1 }]
                 },
-                options: { responsive: true, plugins: { legend: { display: false } }, cutout: '70%' }
+                options: { responsive: true, plugins: { legend: { display: true, position: 'bottom' } }, cutout: '70%', onClick: handleChartClick }
             });
         }
 
-        // --- GRÁFICA DE TURNOS (BARRAS) ---
+        // --- GRÁFICA DE TURNOS (BARRAS APILADAS) ---
         const canvasTurno = document.getElementById('graficaTurnoTickets');
         if (canvasTurno) {
-            const ctx = canvasTurno.getContext('2d');
-            new Chart(ctx, {
+            new Chart(canvasTurno.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: {{ contexto_graficas.turno_labels|safe }},
-                    datasets: [{
-                        label: 'Nº de Tickets',
-                        data: {{ contexto_graficas.turno_data|safe }},
-                        backgroundColor: ['#9966FF', '#4BC0C0', '#FF9F40'],
-                    }]
+                    labels: {{ contexto_graficas.stacked_bar_labels|safe }},
+                    datasets: {{ contexto_graficas.stacked_bar_datasets|safe }}
                 },
-                options: { responsive: true, plugins: { legend: { display: false } } }
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    onClick: handleChartClick
+                }
             });
         }
     });

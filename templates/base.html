@@ -171,22 +171,7 @@
 
 
 
-<script>
-    // ... (tu función selectTool se queda igual) ...
-    // ... (tu función para el modo oscuro se queda igual) ...
 
-    // --- AÑADE ESTE BLOQUE ---
-    // Escuchamos los eventos de HTMX en nuestro contenedor de modales
-    const modalContainer = document.getElementById('modal-container');
-    if (modalContainer) {
-        modalContainer.addEventListener('htmx:afterSwap', function() {
-            // Esta función se ejecuta DESPUÉS de que HTMX ha cargado el contenido
-            // Creamos una instancia del modal de Bootstrap y lo mostramos
-            const modal = new bootstrap.Modal(modalContainer);
-            modal.show();
-        });
-    }
-</script>
 
 </body>
 </html>
