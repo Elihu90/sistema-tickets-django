@@ -1,36 +1,44 @@
 <table class="table table-hover align-middle">
-    <thead>
-        <tr>
-            <th>Folio</th>
-            <th>Herramienta (Modelo)</th>
-            <th>Falla Reportada</th>
-            <th>Estado</th>
-            <th>Creado Por</th>
-            <th>Fecha de Creación</th>
-            <th>Turno</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for ticket in tickets %}
-        <tr>
-            <td><a href="{% url 'detalles_ticket' ticket.pk %}"><strong>{{ ticket.folio }}</strong></a></td>
-            <td>{{ ticket.herramienta.modelo|default:"N/A" }}</td>
-            <td>{{ ticket.falla.descripcion|default:"N/A" }}</td>
-            <td><span class="badge bg-primary">{{ ticket.estado.nombre }}</span></td>
-            <td>{{ ticket.creado_por.username }}</td>
-            <td>{{ ticket.fecha_creacion|date:"d/m/Y H:i" }}</td>
-            <td>{{ ticket.turno|default:"N/A" }}</td>
-            <td>
-                <a href="{% url 'detalles_ticket' ticket.pk %}" class="btn btn-sm btn-info" title="Ver Detalles">
-                    <i class="bi bi-eye"></i> Ver detalle
-                </a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="8" class="text-center">No hay tickets para mostrar.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+  <thead>
+    <tr>
+      <th>Folio</th>
+      <th>Herramienta (Modelo)</th>
+      <th>Falla Reportada</th>
+      <th>Estado</th>
+      <th>Creado Por</th>
+      <th>Fecha de Creación</th>
+      <th>Turno</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ticket in tickets %}
+    <tr>
+      <td>
+        <a href="{% url 'detalles_ticket' ticket.pk %}"
+          ><strong>{{ ticket.folio }}</strong></a
+        >
+      </td>
+      <td>{{ ticket.herramienta.modelo|default:"N/A" }}</td>
+      <td>{{ ticket.falla.descripcion|default:"N/A" }}</td>
+      <td><span class="badge bg-primary">{{ ticket.estado.nombre }}</span></td>
+      <td>{{ ticket.creado_por.username }}</td>
+      <td>{{ ticket.fecha_creacion|date:"d/m/Y H:i" }}</td>
+      <td>{{ ticket.turno|default:"N/A" }}</td>
+      <td>
+        <a
+          href="{% url 'detalles_ticket' ticket.pk %}"
+          class="btn btn-sm btn-info"
+          title="Ver Detalles"
+        >
+          <i class="bi bi-eye"></i> Ver detalle
+        </a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="8" class="text-center">No hay tickets para mostrar.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>

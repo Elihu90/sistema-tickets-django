@@ -11,8 +11,15 @@ from django.http import HttpResponse
 import json # Asegúrate de tener este import
 
 
-from .forms import TicketForm, ActualizarEstadoForm
+from .forms import TicketForm, ActualizarEstadoForm, ComentarioForm
 from .models import Ticket, TicketEstado, Herramienta, Notificacion
+from .models import Ticket, Comentario
+
+
+
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
 
 # ==============================================================================
 # Vistas Principales (CRUD)
@@ -70,31 +77,62 @@ def crear_ticket(request):
 @login_required
 def lista_tickets(request):
     """
-    Muestra la lista de tickets con lógica de permisos.
+    Muestra la lista de tickets y pasa las opciones de estado para el formulario.
     """
+    # Obtenemos todos los tickets, como antes
     if request.user.has_perm('tickets.view_ticket'):
         lista_de_tickets = Ticket.objects.all().order_by('-fecha_creacion')
-        if request.user.has_perm('tickets.change_ticket'):
-            for ticket in lista_de_tickets:
-                ticket.form_estado = ActualizarEstadoForm(instance=ticket)
     else:
         lista_de_tickets = Ticket.objects.filter(creado_por=request.user).order_by('-fecha_creacion')
     
-    contexto = {'tickets': lista_de_tickets}
+    # ⭐ CORRECCIÓN CLAVE: Obtenemos la lista de todos los estados posibles
+    opciones_estado = TicketEstado.objects.all()
+    
+    contexto = {
+        'tickets': lista_de_tickets,
+        'opciones_estado': opciones_estado # <-- Se la pasamos a la plantilla
+    }
     return render(request, 'tickets/lista_tickets.html', contexto)
 
 
+# tickets/views.py
+
+# Asegúrate de que estos imports estén al principio de tu archivo
+from .forms import TicketForm, ActualizarEstadoForm, ComentarioForm
+from .models import Ticket, Comentario, TicketEstado # <-- Añadimos Comentario y TicketEstado
+
 @login_required
 def detalles_ticket(request, pk):
-    """
-    Muestra los detalles de un ticket con lógica de permisos.
-    """
     ticket = get_object_or_404(Ticket, pk=pk)
+    
+    # Verificamos permisos de visualización
     if not request.user.has_perm('tickets.view_ticket') and ticket.creado_por != request.user:
         messages.error(request, "No tienes permiso para ver este ticket.")
         return redirect('lista_tickets')
-    
-    contexto = {'ticket': ticket}
+
+    # Lógica para el historial de comentarios
+    historial_comentarios = ticket.historial_comentarios.all()
+    form_comentario = ComentarioForm()
+
+    if request.method == 'POST' and 'guardar_comentario' in request.POST:
+        form_comentario = ComentarioForm(request.POST)
+        if form_comentario.is_valid():
+            nuevo_comentario = form_comentario.save(commit=False)
+            nuevo_comentario.ticket = ticket
+            nuevo_comentario.autor = request.user
+            nuevo_comentario.save()
+            messages.success(request, "Comentario añadido exitosamente.")
+            return redirect('detalles_ticket', pk=ticket.pk)
+
+    # Lógica para el formulario de cambio de estado
+    form_estado = ActualizarEstadoForm(instance=ticket)
+
+    contexto = {
+        'ticket': ticket,
+        'form_estado': form_estado,
+        'historial': historial_comentarios,
+        'form_comentario': form_comentario,
+    }
     return render(request, 'tickets/detalles_ticket.html', contexto)
 
 
@@ -499,3 +537,90 @@ def detalles_filtrados_modal(request):
         'titulo_modal': titulo_modal
     }
     return render(request, 'partials/modal_detalles_generico.html', contexto)
+
+
+
+
+
+
+@login_required
+def exportar_tickets_excel(request):
+    """
+    Toma los filtros activos del dashboard, consulta la base de datos
+    y genera un archivo .xlsx para descargar.
+    """
+    if not request.user.is_staff:
+        return redirect('lista_tickets')
+
+    # --- 1. Reutilizamos la misma lógica de filtros del dashboard ---
+    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
+    start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
+    estado_filtro = request.GET.get('estado')
+    turno_filtro = request.GET.get('turno')
+    fabricante_filtro = request.GET.get('fabricante')
+
+    start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
+    end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
+    
+    tickets_query = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
+    
+    if estado_filtro:
+        tickets_query = tickets_query.filter(estado__id=estado_filtro)
+    if turno_filtro:
+        tickets_query = tickets_query.filter(turno=turno_filtro)
+    if fabricante_filtro:
+        tickets_query = tickets_query.filter(herramienta__fabricante=fabricante_filtro)
+
+    # --- 2. Creamos el archivo de Excel en memoria ---
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Reporte de Tickets"
+
+    # Definimos los encabezados de las columnas
+    headers = [
+        "Folio", "Estado", "Herramienta (Modelo)", "No. Serie", "Falla",
+        "Comentarios", "Creado Por", "Fecha Creación", "Turno", "Ubicación"
+    ]
+    sheet.append(headers)
+
+    # Damos formato a los encabezados (negrita y centrado)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # --- 3. Llenamos el archivo con los datos de los tickets ---
+    for ticket in tickets_query.order_by('fecha_creacion'):
+        ubicacion_str = str(ticket.ubicacion) if ticket.ubicacion else "N/A"
+        
+        # Creamos una fila con los datos de cada ticket
+        row = [
+            ticket.folio,
+            ticket.estado.nombre,
+            ticket.herramienta.modelo,
+            ticket.herramienta.numero_serie,
+            ticket.falla.descripcion if ticket.falla else "N/A",
+            ticket.comentarios,
+            ticket.creado_por.username,
+            timezone.localtime(ticket.fecha_creacion).strftime("%d/%m/%Y %H:%M"),
+            ticket.turno,
+            ubicacion_str
+        ]
+        sheet.append(row)
+
+    # Ajustamos el ancho de las columnas automáticamente
+    for column_cells in sheet.columns:
+        length = max(len(str(cell.value or "")) for cell in column_cells)
+        sheet.column_dimensions[column_cells[0].column_letter].width = length + 2
+
+    # --- 4. Preparamos la respuesta HTTP para descargar el archivo ---
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    # Damos un nombre al archivo que se va a descargar
+    filename = f"Reporte_Tickets_{timezone.now().strftime('%Y-%m-%d')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Guardamos el libro de Excel en la respuesta
+    workbook.save(response)
+
+    return response

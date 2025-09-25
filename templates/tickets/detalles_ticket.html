@@ -1,46 +1,73 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h3>Detalles del Ticket: {{ ticket.folio }}</h3>
+<div class="container mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Detalles del Ticket: {{ ticket.folio }}</h2>
+        <div>
+            <a href="{% url 'lista_tickets' %}" class="btn btn-secondary"><i class="bi bi-list-ul me-2"></i>Volver a la Lista</a>
+            <a href="{% url 'dashboard_service_line' %}" class="btn btn-info"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+            {% if perms.tickets.change_ticket %}
+                <a href="{% url 'editar_ticket' ticket.pk %}" class="btn btn-warning"><i class="bi bi-pencil-square me-2"></i>Editar</a>
+            {% endif %}
+            {% if perms.tickets.delete_ticket %}
+                <a href="#" class="btn btn-danger"><i class="bi bi-trash me-2"></i>Eliminar</a>
+            {% endif %}
+        </div>
     </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <h5>Información General</h5>
-                <p><strong>Estado:</strong> <span class="badge bg-primary">{{ ticket.estado.nombre }}</span></p>
-                <p><strong>Generado por:</strong> {{ ticket.creado_por.username }}</p>
-                <p><strong>Fecha de Creación:</strong> {{ ticket.fecha_creacion|date:"d/m/Y a las H:i" }}</p>
-                <p><strong>Última Actualización:</strong> {{ ticket.fecha_actualizacion|date:"d/m/Y a las H:i" }}</p>
-            </div>
-            <div class="col-md-6">
-                <h5>Detalles de la Herramienta</h5>
-                <p><strong>Herramienta:</strong> {{ ticket.herramienta.modelo }}</p>
-                <p><strong>No. Serie:</strong> {{ ticket.herramienta.numero_serie }}</p>
-                <p><strong>Fabricante:</strong> {{ ticket.herramienta.fabricante }}</p>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4><i class="bi bi-tools me-2"></i>Herramienta y Falla</h4>
+                    <p><strong>Herramienta:</strong> {{ ticket.herramienta }}</p>
+                    <p><strong>Falla Reportada:</strong> {{ ticket.falla.descripcion|default:"N/A" }}</p>
+                    <p><strong>Comentarios Iniciales:</strong> {{ ticket.comentarios|default:"Sin comentarios." }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h4><i class="bi bi-info-circle me-2"></i>Información General</h4>
+                    <p><strong>Estado Actual:</strong> <span class="badge bg-primary fs-6">{{ ticket.estado.nombre }}</span></p>
+                    <p><strong>Creado por:</strong> {{ ticket.creado_por.username }}</p>
+                    <p><strong>Fecha de Creación:</strong> {{ ticket.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Última Actualización:</strong> {{ ticket.fecha_actualizacion|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Turno:</strong> {{ ticket.turno|default:"N/A" }}</p>
+                </div>
             </div>
         </div>
-        <hr>
-        <h5>Descripción de la Falla</h5>
-        <p><strong>Código de Falla:</strong> {{ ticket.falla.codigo|default:"N/A" }}</p>
-        <p><strong>Descripción:</strong> {{ ticket.falla.descripcion|default:"N/A" }}</p>
-        <p><strong>Comentarios Adicionales:</strong></p>
-        <p>{{ ticket.comentarios|linebreaksbr }}</p>
     </div>
-    <div class="card-footer text-end">
-    {% if user.is_staff %}
-        <a href="{% url 'dashboard_service_line' %}" class="btn btn-secondary">Volver al Dashboard</a>
-    {% else %}
-        <a href="{% url 'lista_tickets' %}" class="btn btn-secondary">Volver a la Lista</a>
-    {% endif %}
-    <a href="{% url 'lista_tickets' %}" class="btn btn-secondary">Volver a la Lista</a>
-    <a href="{% url 'editar_ticket' ticket.pk %}" class="btn btn-warning">Editar Ticket</a>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h4><i class="bi bi-chat-left-text me-2"></i>Historial de Actualizaciones</h4>
+        </div>
+        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+            {% for comentario in historial %}
+                <div class="alert alert-light border-start border-4 border-primary">
+                    <p class="mb-1"><strong>{{ comentario.autor.username }}</strong> <small class="text-muted">({{ comentario.fecha_creacion|date:"d/m/Y H:i" }})</small></p>
+                    {{ comentario.texto|linebreaks }}
+                </div>
+            {% empty %}
+                <p class="text-muted">No hay comentarios en este ticket todavía.</p>
+            {% endfor %}
+        </div>
+    </div>
 
-    {% if user.is_staff %}
-        <a href="{% url 'eliminar_ticket' ticket.pk %}" class="btn btn-danger">Eliminar Ticket</a>
+    {% if perms.tickets.add_comentario %} <div class="card mt-4">
+        <div class="card-header">
+            <h4><i class="bi bi-plus-circle me-2"></i>Añadir Comentario</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form_comentario.texto.label_tag }}
+                {{ form_comentario.texto }}
+                <button type="submit" name="guardar_comentario" class="btn btn-primary mt-3">Guardar Comentario</button>
+            </form>
+        </div>
+    </div>
     {% endif %}
+
 </div>
 {% endblock %}
-
-

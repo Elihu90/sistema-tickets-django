@@ -2,7 +2,14 @@
 
 {% block content %}
 <div class="card mb-4">
-    <div class="card-header"><h1>Dashboard de Service Line</h1></div>
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Dashboard de Service Line</h1>
+            <a href="{% url 'exportar_tickets' %}?start_date={{ start_date_value }}&end_date={{ end_date_value }}&estado={{ request.GET.estado|default:'' }}&turno={{ request.GET.turno|default:'' }}&fabricante={{ request.GET.fabricante|default:'' }}" class="btn btn-success">
+                <i class="bi bi-file-earmark-excel me-2"></i>Exportar a Excel
+            </a>
+        </div>
+    </div>
     <div class="card-body">
         <form method="get" class="row g-3 mb-4 p-3 border rounded align-items-end">
             <div class="col-md-3"><label class="form-label fw-bold">Fecha de Inicio</label><input type="date" name="start_date" class="form-control" value="{{ start_date_value }}"></div>
@@ -30,7 +37,7 @@
 </div>
 
 <div id="modal-container" hx-on::after-swap="new bootstrap.Modal(document.getElementById('detallesModal')).show()">
-    </div>
+</div>
 {% endblock content %}
 
 {% block extra_js %}
@@ -40,7 +47,6 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         
-        // ⭐ 2. FUNCIÓN PARA MANEJAR LOS CLICS EN LAS GRÁFICAS ⭐
         function handleChartClick(event, elements, chart) {
             if (elements.length === 0) return;
 
@@ -63,7 +69,6 @@
             }
         }
 
-        // --- TU GRÁFICA DE ESTADOS (DONA) ---
         const canvasEstado = document.getElementById('graficaEstadoTickets');
         if (canvasEstado) {
             new Chart(canvasEstado.getContext('2d'), {
@@ -83,12 +88,11 @@
                         }
                     },
                     cutout: '70%',
-                    onClick: handleChartClick // ⭐ 3. ASIGNAMOS LA FUNCIÓN AL CLIC
+                    onClick: handleChartClick
                 }
             });
         }
 
-        // --- TU GRÁFICA DE TURNOS (BARRAS APILADAS) ---
         const canvasTurno = document.getElementById('graficaTurnoTickets');
         if (canvasTurno) {
             new Chart(canvasTurno.getContext('2d'), {
@@ -107,7 +111,7 @@
                         }
                     },
                     scales: { x: { stacked: true }, y: { stacked: true } },
-                    onClick: handleChartClick // ⭐ 3. ASIGNAMOS LA FUNCIÓN AL CLIC
+                    onClick: handleChartClick
                 }
             });
         }

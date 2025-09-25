@@ -75,3 +75,18 @@ class Notificacion(models.Model):
         ordering = ['-fecha_creacion']
         verbose_name = 'Notificación'
         verbose_name_plural = 'Notificaciones'
+        
+ 
+ 
+        # ↓↓↓ AÑADE ESTE NUEVO MODELO AL FINAL DEL ARCHIVO ↓↓↓
+class Comentario(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='historial_comentarios')
+    autor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    texto = models.TextField()
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comentario de {self.autor.username} en ticket {self.ticket.folio}"
+
+    class Meta:
+        ordering = ['fecha_creacion'] # Muestra los comentarios del más antiguo al más nuevo

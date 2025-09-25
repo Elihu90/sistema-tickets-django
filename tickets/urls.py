@@ -26,6 +26,8 @@ urlpatterns = [
     path('data/tickets-por-estado/', views.ticket_estado_data, name='ticket_estado_data'),
     
     
+    path('dashboard/exportar/', views.exportar_tickets_excel, name='exportar_tickets'),
+    
 # --- URL ÚNICA PARA TODOS LOS DETALLES EN POP-UP ---
     path('modal/detalles-filtrados/', views.detalles_filtrados_modal, name='modal_detalles_filtrados'),
     
