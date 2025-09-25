@@ -1,33 +1,61 @@
 // static/js/dashboard_charts.js
 
-// Guardamos las instancias de las gráficas para poder actualizarlas
-let estadoChart;
-let turnoChart;
+// Guardamos las instancias para evitar que las gráficas se redibujen unas sobre otras
+let estadoChartInstance = null;
+let turnoChartInstance = null;
 
-function crearOActualizarGraficas(data) {
-    // --- Gráfica de Estados ---
-    const ctxEstado = document.getElementById('graficaEstadoTickets').getContext('2d');
-    if (estadoChart) {
-        // Si la gráfica ya existe, solo actualizamos sus datos
-        estadoChart.data.labels = data.estado_labels;
-        estadoChart.data.datasets[0].data = data.estado_data;
-        estadoChart.update();
-    } else {
-        // Si no existe, la creamos
-        estadoChart = new Chart(ctxEstado, {
+document.addEventListener('DOMContentLoaded', function () {
+    const dataContainer = document.getElementById('graficas-data');
+    if (!dataContainer) return;
+
+    // Parseamos el string JSON que nos pasó la vista de Django
+    const data = JSON.parse(dataContainer.dataset.json);
+
+    // --- GRÁFICA DE ESTADOS (DONA) ---
+    const canvasEstado = document.getElementById('graficaEstadoTickets');
+    if (canvasEstado) {
+        // Si ya existe una gráfica en este canvas, la destruimos primero
+        if (estadoChartInstance) {
+            estadoChartInstance.destroy();
+        }
+        estadoChartInstance = new Chart(canvasEstado.getContext('2d'), {
             type: 'doughnut',
             data: {
                 labels: data.estado_labels,
-                datasets: [{
-                    label: 'Tickets por Estado',
-                    data: data.estado_data,
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+                datasets: [{ 
+                    data: data.estado_data, 
+                    backgroundColor: data.estado_colors, 
+                    borderWidth: 1 
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'top' } } }
+            options: { 
+                responsive: true, 
+                plugins: { legend: { display: true, position: 'bottom' } }, 
+                cutout: '70%'
+                // La función de click se podría añadir aquí si se necesita
+            }
         });
     }
 
-    // --- Gráfica de Turnos (puedes añadirla aquí) ---
-    // ... Lógica similar para una segunda gráfica ...
-}
+    // --- GRÁFICA DE TURNOS (BARRAS APILADAS) ---
+    const canvasTurno = document.getElementById('graficaTurnoTickets');
+    if (canvasTurno) {
+        // Destruimos la instancia anterior si existe
+        if (turnoChartInstance) {
+            turnoChartInstance.destroy();
+        }
+        turnoChartInstance = new Chart(canvasTurno.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: data.stacked_bar_labels,
+                datasets: data.stacked_bar_datasets
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } },
+                scales: { x: { stacked: true }, y: { stacked: true } }
+                // La función de click se podría añadir aquí
+            }
+        });
+    }
+});

@@ -156,3 +156,15 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+
+
+
+import os
+
+STATIC_URL = '/static/'
+
+# Aquí le decimos a Django que busque una carpeta llamada 'static' en la raíz del proyecto
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]

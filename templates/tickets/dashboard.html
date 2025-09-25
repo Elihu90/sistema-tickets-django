@@ -14,9 +14,9 @@
         </form>
 
         <div class="row text-center mb-4">
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Tickets por Estado</h5><div class="position-relative"><canvas id="graficaEstadoTickets"></canvas><div class="position-absolute top-50 start-50 translate-middle" style="font-size: 1.8rem; font-weight: bold;">{{ eficiencia_ponderada }}%</div></div></div></div></div>
+            <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Tickets por Estado</h5><div class="position-relative"><canvas id="graficaEstadoTickets"></canvas><div class="position-absolute top-50 start-50 translate-middle text-center"><div style="font-size: 1.8rem; font-weight: bold;">{{ eficiencia_ponderada }}%</div><div class="text-muted" style="font-size: 0.8rem;">Eficiencia</div></div></div></div></div></div>
             <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Tickets por Turno</h5><canvas id="graficaTurnoTickets"></canvas></div></div></div>
-            <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Top 5 Herramientas con Más Fallas</h5><div class="list-group list-group-flush">{% for item in top_herramientas_fallas %}<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" hx-get="{% url 'modal_detalles_filtrados' %}?filtro_tipo=modelo&filtro_valor={{ item.herramienta__modelo }}" hx-target="#modal-container">{{ item.herramienta__modelo|default:"N/A" }}<span class="badge bg-danger rounded-pill">{{ item.total }}</span></a>{% empty %}<li class="list-group-item">No hay datos.</li>{% endfor %}</div></div></div></div>
+            <div class="col-md-4"><div class="card h-100"><div class="card-body"><h5 class="card-title">Top 5 Herramientas con Más Fallas</h5><div class="list-group list-group-flush">{% for item in top_herramientas_fallas %}<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" hx-get="{% url 'modal_detalles_filtrados' %}?filtro_tipo=modelo&filtro_valor={{ item.herramienta__modelo|urlencode }}" hx-target="#modal-container">{{ item.herramienta__modelo|default:"N/A" }}<span class="badge bg-danger rounded-pill">{{ item.total }}</span></a>{% empty %}<li class="list-group-item">No hay datos.</li>{% endfor %}</div></div></div></div>
         </div>
 
         <div class="row mt-4">
@@ -28,32 +28,42 @@
         {% include 'partials/tabla_tickets.html' %}
     </div>
 </div>
+
+<div id="modal-container" hx-on::after-swap="new bootstrap.Modal(document.getElementById('detallesModal')).show()">
+    </div>
 {% endblock content %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- Función que maneja los clics en las gráficas ---
+        
+        // ⭐ 2. FUNCIÓN PARA MANEJAR LOS CLICS EN LAS GRÁFICAS ⭐
         function handleChartClick(event, elements, chart) {
             if (elements.length === 0) return;
-            const clickedElementIndex = elements[0].index;
-            const label = chart.data.labels[clickedElementIndex];
-            let filtro_tipo = '';
+
+            const clickedIndex = elements[0].index;
+            const dates = `&start_date={{ start_date_value }}&end_date={{ end_date_value }}`;
+            let url = `{% url 'modal_detalles_filtrados' %}?`;
             
             if (chart.canvas.id === 'graficaEstadoTickets') {
-                filtro_tipo = 'estado';
+                const estado = chart.data.labels[clickedIndex];
+                url += `filtro_tipo=estado&filtro_valor=${encodeURIComponent(estado)}${dates}`;
             } else if (chart.canvas.id === 'graficaTurnoTickets') {
-                filtro_tipo = 'turno';
+                const turno = chart.data.labels[clickedIndex];
+                const datasetIndex = elements[0].datasetIndex;
+                const estado = chart.data.datasets[datasetIndex].label;
+                url += `filtro_tipo=turno_estado&filtro_valor=${encodeURIComponent(turno)}&filtro_valor2=${encodeURIComponent(estado)}${dates}`;
             }
 
-            if (filtro_tipo) {
-                const url = `{% url 'modal_detalles_filtrados' %}?filtro_tipo=${filtro_tipo}&filtro_valor=${encodeURIComponent(label)}`;
+            if (url) {
                 htmx.ajax('GET', url, {target: '#modal-container'});
             }
         }
 
-        // --- GRÁFICA DE ESTADOS (DONA) ---
+        // --- TU GRÁFICA DE ESTADOS (DONA) ---
         const canvasEstado = document.getElementById('graficaEstadoTickets');
         if (canvasEstado) {
             new Chart(canvasEstado.getContext('2d'), {
@@ -62,11 +72,23 @@
                     labels: {{ contexto_graficas.estado_labels|safe }},
                     datasets: [{ data: {{ contexto_graficas.estado_data|safe }}, backgroundColor: {{ contexto_graficas.estado_colors|safe }}, borderWidth: 1 }]
                 },
-                options: { responsive: true, plugins: { legend: { display: true, position: 'bottom' } }, cutout: '70%', onClick: handleChartClick }
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true, position: 'bottom' },
+                        datalabels: {
+                            formatter: (value) => value > 0 ? value : '',
+                            color: '#fff',
+                            font: { weight: 'bold' }
+                        }
+                    },
+                    cutout: '70%',
+                    onClick: handleChartClick // ⭐ 3. ASIGNAMOS LA FUNCIÓN AL CLIC
+                }
             });
         }
 
-        // --- GRÁFICA DE TURNOS (BARRAS APILADAS) ---
+        // --- TU GRÁFICA DE TURNOS (BARRAS APILADAS) ---
         const canvasTurno = document.getElementById('graficaTurnoTickets');
         if (canvasTurno) {
             new Chart(canvasTurno.getContext('2d'), {
@@ -77,9 +99,15 @@
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'top' } },
+                    plugins: { 
+                        legend: { position: 'top' },
+                         datalabels: {
+                            color: '#fff', font: { weight: 'bold' },
+                            formatter: (value) => value > 0 ? value : ''
+                        }
+                    },
                     scales: { x: { stacked: true }, y: { stacked: true } },
-                    onClick: handleChartClick
+                    onClick: handleChartClick // ⭐ 3. ASIGNAMOS LA FUNCIÓN AL CLIC
                 }
             });
         }

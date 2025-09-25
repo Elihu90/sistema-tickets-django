@@ -8,7 +8,7 @@ from django.db.models import Count
 import datetime
 from django.http import JsonResponse
 from django.http import HttpResponse
-
+import json # Asegúrate de tener este import
 
 
 from .forms import TicketForm, ActualizarEstadoForm
@@ -231,77 +231,75 @@ def dashboard_service_line(request):
     if not request.user.is_staff:
         return redirect('lista_tickets')
 
-    # ... (La lógica de filtros se queda igual) ...
+    # --- 1. Recopilar y aplicar todos los filtros ---
     end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
     start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
-    estado_filtro = request.GET.get('estado')
+    
+    # Obtenemos los filtros como strings
+    estado_filtro_str = request.GET.get('estado')
     turno_filtro = request.GET.get('turno')
     fabricante_filtro = request.GET.get('fabricante')
+
     start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
     end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
+    
     tickets_query = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
-    if estado_filtro: tickets_query = tickets_query.filter(estado__id=estado_filtro)
-    if turno_filtro: tickets_query = tickets_query.filter(turno=turno_filtro)
-    if fabricante_filtro: tickets_query = tickets_query.filter(herramienta__fabricante=fabricante_filtro)
+    
+    # ⭐ CORRECCIÓN CLAVE: Aplicamos el filtro de estado de forma segura
+    if estado_filtro_str and estado_filtro_str.isdigit():
+        tickets_query = tickets_query.filter(estado__id=int(estado_filtro_str))
+        
+    if turno_filtro:
+        tickets_query = tickets_query.filter(turno=turno_filtro)
+    if fabricante_filtro:
+        tickets_query = tickets_query.filter(herramienta__fabricante=fabricante_filtro)
 
-    # --- CÁLCULO DE ESTADÍSTICAS ---
-
-    # Gráfica de Estados y KPI de Eficiencia
+    # --- 2. Calcular estadísticas (esta parte se queda igual) ---
     conteo_por_estado = tickets_query.values('estado__nombre').annotate(total=Count('id')).order_by()
-    color_map = {'Abierto': '#FF6384', 'En Reparacion': '#FFCE56', 'Cerrado': '#4BC0C0'}
+    color_map = {'Abierto': '#FF6384', 'En Reparación': '#FFCE56', 'Cerrado': '#4BC0C0'}
+    
     tickets_cerrados_count = tickets_query.filter(estado__nombre='Cerrado').count()
     tickets_reparacion_count = tickets_query.filter(estado__nombre='En Reparacion').count()
     total_tickets_periodo = tickets_query.count()
     puntaje = (tickets_cerrados_count * 1) + (tickets_reparacion_count * 0.5)
     eficiencia_ponderada = round((puntaje / total_tickets_periodo) * 100, 1) if total_tickets_periodo > 0 else 0
-
-    # --- NUEVA LÓGICA PARA LA GRÁFICA DE BARRAS APILADAS ---
-    # 1. Agrupamos por turno Y por estado
+    
     conteo_turno_estado = tickets_query.exclude(turno__isnull=True).exclude(turno='').values('turno', 'estado__nombre').annotate(total=Count('id')).order_by('turno')
-
-    # 2. Transformamos (pivotamos) los datos para Chart.js
     labels_turnos = sorted(list(tickets_query.exclude(turno__isnull=True).exclude(turno='').values_list('turno', flat=True).distinct()))
-    estados = ['Abierto', 'En Reparacion', 'Cerrado']
+    estados = ['Abierto', 'En Reparación', 'Cerrado']
     datasets = []
-
+    
     for estado in estados:
         data = []
         for turno in labels_turnos:
-            # Buscamos el conteo para esta combinación de turno y estado
             conteo = next((item['total'] for item in conteo_turno_estado if item['turno'] == turno and item['estado__nombre'] == estado), 0)
             data.append(conteo)
+        datasets.append({'label': estado, 'data': data, 'backgroundColor': color_map.get(estado, '#CCCCCC')})
 
-        datasets.append({
-            'label': estado,
-            'data': data,
-            'backgroundColor': color_map.get(estado, '#CCCCCC'),
-        })
-
-    # --- Preparamos el contexto para las gráficas ---
-    contexto_graficas = {
-        'estado_labels': [item['estado__nombre'] for item in conteo_por_estado],
-        'estado_data': [item['total'] for item in conteo_por_estado],
-        'estado_colors': [color_map.get(item['estado__nombre'], '#CCCCCC') for item in conteo_por_estado],
-        'eficiencia_ponderada': eficiencia_ponderada,
-        'stacked_bar_labels': labels_turnos,
-        'stacked_bar_datasets': datasets,
-    }
-
-    # ... (El resto de la vista se queda igual) ...
     top_herramientas_fallas = tickets_query.values('herramienta__modelo').annotate(total=Count('id')).order_by('-total')[:5]
     top_tickets_antiguos = Ticket.objects.exclude(estado__nombre='Cerrado').order_by('fecha_creacion')[:5]
+
+    # --- 3. Preparar el contexto completo ---
     contexto_completo = {
-        'tickets': tickets_query.order_by('-fecha_creacion'), 'start_date_value': start_date_str, 'end_date_value': end_date_str,
-        'contexto_graficas': contexto_graficas, 'eficiencia_ponderada': eficiencia_ponderada,
-        'top_tickets_antiguos': top_tickets_antiguos, 'top_herramientas_fallas': top_herramientas_fallas,
+        'tickets': tickets_query.order_by('-fecha_creacion'),
+        'start_date_value': start_date_str, 'end_date_value': end_date_str,
+        'eficiencia_ponderada': eficiencia_ponderada,
+        'top_tickets_antiguos': top_tickets_antiguos,
+        'top_herramientas_fallas': top_herramientas_fallas,
         'opciones_estado': TicketEstado.objects.all(),
         'opciones_turno': Ticket.objects.filter(turno__isnull=False).values_list('turno', flat=True).distinct(),
         'opciones_fabricante': Herramienta.objects.values_list('fabricante', flat=True).distinct(),
+        # ⭐ CORRECCIÓN CLAVE: Pasamos los datos de las gráficas como un string JSON seguro
+        'graficas_data_json': json.dumps({
+            'estado_labels': [item['estado__nombre'] for item in conteo_por_estado],
+            'estado_data': [item['total'] for item in conteo_por_estado],
+            'estado_colors': [color_map.get(item['estado__nombre'], '#CCCCCC') for item in conteo_por_estado],
+            'stacked_bar_labels': labels_turnos,
+            'stacked_bar_datasets': datasets,
+        })
     }
-    for ticket in contexto_completo['tickets']:
-        ticket.form_estado = ActualizarEstadoForm(instance=ticket)
+    
     return render(request, 'tickets/dashboard.html', contexto_completo)
-
 
 
 
@@ -355,12 +353,21 @@ def ticket_estado_data(request):
 
 
 
+# tickets/views.py
+
+# ... (deja los otros imports como están) ...
+
+# tickets/views.py
+
+# ... (deja los otros imports como están) ...
+import json # Asegúrate de tener este import
+
 @login_required
 def dashboard_service_line(request):
     if not request.user.is_staff:
         return redirect('lista_tickets')
 
-    # --- 1. Recopilar y aplicar todos los filtros ---
+    # --- 1. Recopilar filtros ---
     end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
     start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
     estado_filtro = request.GET.get('estado')
@@ -370,10 +377,14 @@ def dashboard_service_line(request):
     start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
     end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
     
-    # La consulta base aplica el filtro de fecha
-    tickets_query = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
+    # --- 2. Construir la consulta base y la consulta filtrada ---
     
-    # Aplicamos filtros adicionales si existen
+    # Consulta base SIN filtro de estado, para calcular el KPI general
+    base_query = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
+    
+    # Empezamos la consulta filtrada a partir de la base
+    tickets_query = base_query
+    
     if estado_filtro:
         tickets_query = tickets_query.filter(estado__id=estado_filtro)
     if turno_filtro:
@@ -381,23 +392,24 @@ def dashboard_service_line(request):
     if fabricante_filtro:
         tickets_query = tickets_query.filter(herramienta__fabricante=fabricante_filtro)
 
-    # --- 2. Calcular todas las estadísticas y KPIs ---
+    # --- 3. Calcular estadísticas ---
     
-    # Gráfica de Estados y KPI de Eficiencia Ponderada
-    conteo_por_estado = tickets_query.values('estado__nombre').annotate(total=Count('id')).order_by()
-    color_map = {'Abierto': '#FF6384', 'En Reparacion': '#FFCE56', 'Cerrado': '#4BC0C0'}
+    color_map = {'Abierto': '#FF6384', 'En Reparación': '#FFCE56', 'Cerrado': '#4BC0C0'}
     
-    tickets_cerrados_count = tickets_query.filter(estado__nombre='Cerrado').count()
-    tickets_reparacion_count = tickets_query.filter(estado__nombre='En Reparacion').count()
-    total_tickets_periodo = tickets_query.count()
-    
+    # ⭐ CORRECCIÓN CLAVE: KPI de eficiencia se calcula sobre la consulta SIN filtro de estado
+    tickets_cerrados_count = base_query.filter(estado__nombre='Cerrado').count()
+    tickets_reparacion_count = base_query.filter(estado__nombre='En Reparación').count()
+    total_tickets_periodo = base_query.count()
     puntaje = (tickets_cerrados_count * 1) + (tickets_reparacion_count * 0.5)
     eficiencia_ponderada = round((puntaje / total_tickets_periodo) * 100, 1) if total_tickets_periodo > 0 else 0
     
-    # Gráfica de Turnos Apilada
+    # ⭐ CORRECCIÓN CLAVE: La gráfica de estado se calcula sobre la consulta FILTRADA
+    conteo_por_estado = tickets_query.values('estado__nombre').annotate(total=Count('id')).order_by()
+    
+    # La lógica para la gráfica de turnos ya era correcta, usa la consulta filtrada
     conteo_turno_estado = tickets_query.exclude(turno__isnull=True).exclude(turno='').values('turno', 'estado__nombre').annotate(total=Count('id')).order_by('turno')
     labels_turnos = sorted(list(tickets_query.exclude(turno__isnull=True).exclude(turno='').values_list('turno', flat=True).distinct()))
-    estados = ['Abierto', 'En Reparacion', 'Cerrado']
+    estados = ['Abierto', 'En Reparación', 'Cerrado']
     datasets = []
     
     for estado in estados:
@@ -405,22 +417,16 @@ def dashboard_service_line(request):
         for turno in labels_turnos:
             conteo = next((item['total'] for item in conteo_turno_estado if item['turno'] == turno and item['estado__nombre'] == estado), 0)
             data.append(conteo)
-        
-        datasets.append({
-            'label': estado,
-            'data': data,
-            'backgroundColor': color_map.get(estado, '#CCCCCC'),
-        })
+        datasets.append({'label': estado, 'data': data, 'backgroundColor': color_map.get(estado, '#CCCCCC')})
 
-    # Listas "Top 5"
+    # Listas "Top 5" (calculadas sobre la consulta filtrada)
     top_herramientas_fallas = tickets_query.values('herramienta__modelo').annotate(total=Count('id')).order_by('-total')[:5]
     top_tickets_antiguos = Ticket.objects.exclude(estado__nombre='Cerrado').order_by('fecha_creacion')[:5]
 
-    # --- 3. Preparar el contexto completo para la plantilla ---
+    # --- 4. Preparar el contexto completo para la plantilla ---
     contexto_completo = {
         'tickets': tickets_query.order_by('-fecha_creacion'),
-        'start_date_value': start_date_str,
-        'end_date_value': end_date_str,
+        'start_date_value': start_date_str, 'end_date_value': end_date_str,
         'eficiencia_ponderada': eficiencia_ponderada,
         'top_tickets_antiguos': top_tickets_antiguos,
         'top_herramientas_fallas': top_herramientas_fallas,
@@ -450,31 +456,40 @@ def dashboard_service_line(request):
 
 @login_required
 def detalles_filtrados_modal(request):
-    """
-    Una vista única para generar el contenido del pop-up para
-    diferentes filtros (estado, turno, modelo de herramienta).
-    """
     if not request.user.is_staff:
         return redirect('lista_tickets')
 
     # Obtenemos los parámetros de la URL
     filtro_tipo = request.GET.get('filtro_tipo')
     filtro_valor = request.GET.get('filtro_valor')
+    
+    # Parámetro extra para la gráfica de barras
+    filtro_valor2 = request.GET.get('filtro_valor2') 
 
-    tickets_filtrados = Ticket.objects.all() # Empezamos con todos los tickets
+    # Empezamos con todos los tickets del rango de fechas del dashboard
+    # (Reutilizamos los filtros de fecha para consistencia)
+    end_date_str = request.GET.get('end_date', timezone.now().strftime('%Y-%m-%d'))
+    start_date_str = request.GET.get('start_date', (timezone.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))
+    start_date = timezone.make_aware(datetime.datetime.strptime(start_date_str, '%Y-%m-%d'))
+    end_date = timezone.make_aware(datetime.datetime.strptime(end_date_str, '%Y-%m-%d')) + datetime.timedelta(days=1)
+    
+    tickets_filtrados = Ticket.objects.filter(fecha_creacion__range=(start_date, end_date))
     titulo_modal = "Detalle de Tickets"
 
     # Aplicamos el filtro correspondiente
     if filtro_tipo == 'estado':
         tickets_filtrados = tickets_filtrados.filter(estado__nombre=filtro_valor)
         titulo_modal = f"Tickets con Estado: {filtro_valor}"
+    
     elif filtro_tipo == 'turno':
-        if filtro_valor == 'No asignado':
-            tickets_filtrados = tickets_filtrados.filter(turno__isnull=True)
-            titulo_modal = "Tickets sin Turno Asignado"
-        else:
-            tickets_filtrados = tickets_filtrados.filter(turno=filtro_valor)
-            titulo_modal = f"Tickets del {filtro_valor}"
+        tickets_filtrados = tickets_filtrados.filter(turno=filtro_valor)
+        titulo_modal = f"Tickets del {filtro_valor}"
+
+    # ⭐ NUEVA LÓGICA: para manejar el clic en la gráfica de barras (turno Y estado)
+    elif filtro_tipo == 'turno_estado':
+        tickets_filtrados = tickets_filtrados.filter(turno=filtro_valor, estado__nombre=filtro_valor2)
+        titulo_modal = f"Tickets '{filtro_valor2}' del {filtro_valor}"
+
     elif filtro_tipo == 'modelo':
         tickets_filtrados = tickets_filtrados.filter(herramienta__modelo=filtro_valor)
         titulo_modal = f"Tickets para el Modelo: {filtro_valor}"
@@ -483,5 +498,4 @@ def detalles_filtrados_modal(request):
         'tickets': tickets_filtrados.order_by('-fecha_creacion'),
         'titulo_modal': titulo_modal
     }
-    # Reutilizamos la misma plantilla para todos los pop-ups
     return render(request, 'partials/modal_detalles_generico.html', contexto)

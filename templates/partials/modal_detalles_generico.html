@@ -1,25 +1,22 @@
-<div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title">{{ titulo_modal }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-            {% if tickets %}
-                <ul class="list-group">
-                    {% for ticket in tickets %}
-                        <li class="list-group-item">
-                            <a href="{% url 'detalles_ticket' ticket.pk %}" target="_blank"><strong>{{ ticket.folio }}</strong></a> - Herramienta: {{ ticket.herramienta.modelo }}
-                            <small class="d-block text-muted">Creado por {{ ticket.creado_por.username }} el {{ ticket.fecha_creacion|date:"d/m/Y" }}</small>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p>No se encontraron tickets para esta selección.</p>
-            {% endif %}
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+{% load static %}
+
+<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallesModalLabel">{{ titulo_modal }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {% if tickets %}
+                    {% include 'partials/tabla_tickets.html' %}
+                {% else %}
+                    <p>No se encontraron tickets que coincidan con los criterios.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
