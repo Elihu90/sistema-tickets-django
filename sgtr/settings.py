@@ -12,6 +12,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+
+
+import os
+import dj_database_url
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,7 +32,7 @@ SECRET_KEY = 'django-insecure-d17c_jl)q2x=))x95ps%8_2pw)@2jv(5(b99s^*45s42f5+@7t
 DEBUG = True
 
 
-ALLOWED_HOSTS = ['127.0.0.1', '.ngrok-free.app']
+ALLOWED_HOSTS = ['*', 'localhost','127.0.0.1', '.ngrok-free.app']
 CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 
@@ -90,14 +96,9 @@ WSGI_APPLICATION = 'sgtr.wsgi.application'
 # sgtr/settings.py
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'sgtr_db',        # El nombre que le dimos a la BD
-        'USER': 'postgres',       # El usuario por defecto de PostgreSQL
-        'PASSWORD': 'AMDvision7@2019', # ¡IMPORTANTE! Usa tu contraseña
-        'HOST': 'localhost',      # O 127.0.0.1
-        'PORT': '5432',           # El puerto por defecto de PostgreSQL
-    }
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL")
+    )
 }
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
