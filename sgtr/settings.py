@@ -26,13 +26,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-d17c_jl)q2x=))x95ps%8_2pw)@2jv(5(b99s^*45s42f5+@7t'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'AMDvision2019')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 
-ALLOWED_HOSTS = ['*', 'localhost','127.0.0.1', '.ngrok-free.app']
+ALLOWED_HOSTS = ['*', 'localhost','3.226.114.213', '127.0.0.1', '.ngrok-free.app']
 CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 
@@ -97,7 +97,8 @@ WSGI_APPLICATION = 'sgtr.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.environ.get("DATABASE_URL")
+        default=f"sqlite:///{os.path.join(BASE_DIR, 'db.sqlite3')}", 
+        conn_max_age=600
     )
 }
 # Password validation
@@ -165,7 +166,15 @@ import os
 
 STATIC_URL = '/static/'
 
-# Aquí le decimos a Django que busque una carpeta llamada 'static' en la raíz del proyecto
+
+# sgtr/settings.py
+
+
+
+
+# Aquí le decimos a Django que busque una carpeta llamada 'static' en la raíz del 
+# proyecto ... tu configuración existente de STATIC_URL y STATICFILES_DIRS 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-]
+    os.path.join(BASE_DIR, "static"), ]
+# Directorio donde se copiarán los archivos estáticos para producción
+STATIC_ROOT = BASE_DIR / 'staticfiles'
