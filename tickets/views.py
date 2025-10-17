@@ -624,3 +624,24 @@ def exportar_tickets_excel(request):
     workbook.save(response)
 
     return response
+
+
+
+def get_nave_for_ubicacion(request):
+    """
+    Vista activada por HTMX. Recibe el ID de una Ubicacion (seleccionada
+    en el campo "Banda") y devuelve el campo "Nave" correspondiente.
+    """
+    # El valor 'ubicacion' que llega es el 'pk' del objeto Ubicacion seleccionado.
+    ubicacion_id = request.GET.get('ubicacion')
+    nave_val = ""
+    if ubicacion_id:
+        # Buscamos el objeto Ubicacion de forma segura y obtenemos su nave.
+        ubicacion = get_object_or_404(Ubicacion, pk=ubicacion_id)
+        nave_val = ubicacion.nave
+    
+    # Devolvemos el HTML completo del campo de texto, que reemplazará el contenido de #nave-container.
+    return HttpResponse(f'''
+        <label for="id_nave_display" class="form-label">Nave</label>
+        <input type="text" name="nave_display" value="{nave_val}" class="textinput form-control" disabled id="id_nave_display">
+    ''')
