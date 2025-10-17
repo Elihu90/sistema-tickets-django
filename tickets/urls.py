@@ -31,6 +31,8 @@ urlpatterns = [
 # --- URL ÚNICA PARA TODOS LOS DETALLES EN POP-UP ---
     path('modal/detalles-filtrados/', views.detalles_filtrados_modal, name='modal_detalles_filtrados'),
     
+    path('get-nave-for-ubicacion/', views.get_nave_for_ubicacion, name='get_nave_for_ubicacion'),
+    
 
     
     # URLs para Notificaciones
