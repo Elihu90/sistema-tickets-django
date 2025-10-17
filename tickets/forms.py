@@ -7,22 +7,26 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Row, Column, Field, HTML, Submit
 
 # --- Campo de Formulario Personalizado ---
-# Creamos esta clase para que el menú desplegable de "Banda" muestre
-# solo el nombre de la banda, en lugar de "Nave - Banda - Tacto...".
+# Para que el menú desplegable de "Banda" muestre solo el nombre de la banda.
 class BandaModelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return obj.banda
 
 class TicketForm(forms.ModelForm):
     """
-    Formulario para la creación de nuevos tickets, con lógica de campos dependientes.
+    Formulario unificado para la creación de tickets.
     """
     # --- Campos que NO están en el modelo (usados para la UI) ---
+    fecha_actual = forms.CharField(label="Fecha", required=False, disabled=True)
+    turno_actual = forms.CharField(label="Turno", required=False, disabled=True)
+    grupo = forms.CharField(label="Grupo Asignado", required=False, disabled=True, initial="Aún no asignado")
+    
+    # Campos para la búsqueda y visualización de la herramienta
     text_search = forms.CharField(
         label="Buscar Herramienta (por modelo, serie o # reparación)",
         required=True,
         widget=forms.TextInput(attrs={
-            'hx-post': '/tickets/buscar-herramienta/',
+            'hx-post': '/tickets/buscar-herramienta/', # Asegúrate que la URL sea la correcta
             'hx-trigger': 'keyup changed delay:500ms',
             'hx-target': '#search-results',
             'autocomplete': 'off',
@@ -33,38 +37,27 @@ class TicketForm(forms.ModelForm):
     fabricante_display = forms.CharField(label="Fabricante", required=False, disabled=True)
     numero_serie_display = forms.CharField(label="Número de Serie", required=False, disabled=True)
     numero_reparacion_display = forms.CharField(label="# Reparación", required=False, disabled=True)
-    fecha_actual = forms.CharField(label="Fecha", required=False, disabled=True)
-    turno_actual = forms.CharField(label="Turno", required=False, disabled=True)
-    grupo = forms.CharField(label="Grupo Asignado", required=False, disabled=True, initial="Aún no asignado")
 
-    # --- Campos del modelo redefinidos para la nueva lógica ---
-
-    # 1. El campo 'ubicacion' ahora se llama "Banda" y usa nuestro campo personalizado.
+    # --- Campos del modelo redefinidos para la nueva lógica de ubicación ---
     ubicacion = BandaModelChoiceField(
         label="Banda",
         queryset=Ubicacion.objects.none(), # Se llenará en __init__
         required=True,
         widget=forms.Select(attrs={
-            'hx-get': '/tickets/get-nave-for-ubicacion/',
+            'hx-get': '/tickets/get-nave-for-ubicacion/', # Asegúrate que la URL sea la correcta
             'hx-target': '#nave-container',
             'hx-trigger': 'change',
         })
     )
-
-    # 2. El campo 'nave_display' se mantiene como el "blanco" (target) del HTMX.
     nave_display = forms.CharField(label="Nave", required=False, disabled=True)
-
-    # 3. El campo 'tacto' ahora es un ChoiceField con todas las opciones.
     TACTO_CHOICES = [('', '---------')] + \
-                    [(str(i), str(i)) for i in range(1, 31)] + \
-                    [(f'OP{j}', f'OP{j}') for j in range(10, 151, 10)]
+                      [(str(i), str(i)) for i in range(1, 31)] + \
+                      [(f'OP{j}', f'OP{j}') for j in range(10, 151, 10)]
     tacto = forms.ChoiceField(
         label="Tacto / OP",
         choices=TACTO_CHOICES,
         required=False
     )
-
-    # 4. El campo 'operacion' ahora es "Caso de atornillado".
     operacion = forms.CharField(
         label="Caso de atornillado",
         required=True,
@@ -74,6 +67,7 @@ class TicketForm(forms.ModelForm):
 
     class Meta:
         model = Ticket
+        # Se eliminan los campos 'nombre_reporta', etc.
         fields = ['herramienta', 'ubicacion', 'falla', 'comentarios', 'estado', 'tacto', 'operacion']
         widgets = {
             'herramienta': forms.HiddenInput(),
@@ -84,24 +78,19 @@ class TicketForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # --- Lógica para poblar el campo 'ubicacion' con bandas únicas ---
-        # 1. Obtenemos solo los nombres de las bandas, sin repetición.
         unique_band_names = Ubicacion.objects.order_by('banda').values_list('banda', flat=True).distinct()
-        
-        # 2. Por cada nombre único, obtenemos el ID del primer objeto 'Ubicacion' que lo contenga.
-        #    Esto nos da una lista de objetos representativos, uno por cada banda.
         pks_of_unique_bands = []
         for band_name in unique_band_names:
             first_ubicacion = Ubicacion.objects.filter(banda=band_name).first()
             if first_ubicacion:
                 pks_of_unique_bands.append(first_ubicacion.pk)
-
-        # 3. Asignamos el queryset final al campo del formulario.
         self.fields['ubicacion'].queryset = Ubicacion.objects.filter(pk__in=pks_of_unique_bands).order_by('banda')
 
         # --- Configuración del Layout ---
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
+            # --- Sección Superior (INTACTA, como la pediste) ---
             Row(
                 Column(Field('fecha_actual', readonly=True), css_class='col-md-4'),
                 Column(Field('turno_actual', readonly=True), css_class='col-md-4'),
@@ -122,17 +111,31 @@ class TicketForm(forms.ModelForm):
                 css_class='align-items-end'
             ),
             HTML('<hr>'),
+
+            # --- SECCIÓN DE HERRAMIENTA (AÑADIDA COMO LA QUERÍAS) ---
             HTML('<h5 class="mb-3">2. Datos de la Herramienta</h5>'),
             'text_search',
-            # ... El resto de tu layout no necesita cambios ...
+            HTML('<div class="htmx-indicator text-muted small">Buscando...</div>'),
+            Row(
+                Column(Field('modelo_display', readonly=True)),
+                Column(Field('fabricante_display', readonly=True)),
+            ),
+            Row(
+                Column(Field('numero_serie_display', readonly=True)),
+                Column(Field('numero_reparacion_display', readonly=True)),
+            ),
             HTML('<div id="search-results" class="list-group mb-3"></div>'),
-            'herramienta',
+            'herramienta', # Campo oculto
+            HTML('<div id="ticket-duplicado-warning" class="mt-2"></div>'),
             HTML('<hr>'),
+
+            # --- SECCIONES FINALES (AJUSTADAS Y SIN CAMPOS EXTRA) ---
             HTML('<h5 class="mb-3">3. Descripción de la Falla</h5>'),
             Row(Column('falla'), Column('comentarios')),
             HTML('<hr>'),
             HTML('<h5 class="mb-3">4. Estado del Ticket</h5>'),
             'estado',
+            
             Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-4 w-100')
         )
 
