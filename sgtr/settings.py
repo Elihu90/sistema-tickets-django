@@ -10,12 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
-
-
-
 import os
+from pathlib import Path
 import dj_database_url
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,13 +26,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'AMDvision2019')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 
-ALLOWED_HOSTS = ['*', 'localhost','3.226.114.213', '127.0.0.1', '.ngrok-free.app']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 
@@ -97,7 +97,7 @@ WSGI_APPLICATION = 'sgtr.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{os.path.join(BASE_DIR, 'db.sqlite3')}", 
+        default=os.environ.get('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
         conn_max_age=600
     )
 }
@@ -153,28 +153,11 @@ LOGIN_URL = '/cuentas/login/'
 LOGIN_REDIRECT_URL =  '/tickets/lista/'
 
 # Imprime los correos en la consola en lugar de enviarlos
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-
-
-
-import os
-
-STATIC_URL = '/static/'
-
-
-# sgtr/settings.py
-
-
-
-
-# Aquí le decimos a Django que busque una carpeta llamada 'static' en la raíz del 
-# proyecto ... tu configuración existente de STATIC_URL y STATICFILES_DIRS 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"), ]
 # Directorio donde se copiarán los archivos estáticos para producción
 STATIC_ROOT = BASE_DIR / 'staticfiles'

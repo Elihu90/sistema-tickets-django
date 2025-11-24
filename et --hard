@@ -1,0 +1,18 @@
+[33mf270d5c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdespliegue-lightsail[m[33m, [m[1;31morigin/despliegue-lightsail[m[33m, [m[1;32mbackup-conflicto-20251018[m[33m)[m merge: integrar cambios remotos con mejoras locales
+[33m0383d39[m[33m ([m[1;33mtag: [m[1;33mbackup-despliegue-v1-20251017[m[33m, [m[1;32mbackup-despliegue-20251017[m[33m, [m[1;32mbackup-20251017[m[33m)[m refactor: formato PEP8 aplicado a views.py y correcciones de código
+[33m8b870fd[m falta herramienta y nave
+[33m916abd8[m elimina nombre
+[33m1edaa48[m[33m ([m[1;32mrefactor-pep8-views[m[33m)[m Configuración para despliegue en Lightsail con Nginx/Gunicorn
+[33m724441b[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Commit inicial: proyecto Django con Docker y scripts de importación
+[33mea0e0c9[m graficos ok 4.0
+[33m8facb87[m graficos ok 3.0
+[33ma2b78bb[m graficos ok 2.0
+[33mdbd3205[m graficos ok
+[33m141c956[m prueeba adespues del bueno
+[33m0fe169c[m Implementada la base del dashboard graficos y modo oscuro, alertas y notificaciones
+[33m7e7a777[m Implementada la base del dashboard para Service Line con filtros
+[33m6037e69[m Implementado sistema de notificaciones en la app
+[33m9977150[m Proyecto listo para revisión inicial 2.0
+[33mc67d29f[m Proyecto listo para revisión inicial
+[33m6b6ba32[m Implementado CRUD completo para Tickets (Crear, Ver, Editar, Eliminar)
+[33m240ebb1[m Commit inicial del proyecto de tickets
