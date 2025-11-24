@@ -1,15 +1,17 @@
-{% for h in herramientas %}
-  <a href="#" class="list-group-item list-group-item-action"
-     
-     data-tool-pk="{{ h.pk }}"
-     data-tool-name="{{ h }}"
-     data-tool-modelo="{{ h.modelo|default:'' }}"
-     data-tool-fabricante="{{ h.fabricante|default:'' }}"
-     data-tool-serie="{{ h.numero_serie|default:'' }}"
-     data-tool-reparacion="{{ h.numero_reparacion|default:'' }}"
-     
-     onclick="selectTool(this); return false;">
-     
-     {{ h }}
-  </a>
+{% comment %}
+Este template renderiza cada herramienta con los atributos necesarios para que la función selectTool() funcione.
+{% endcomment %}
+
+{% for herramienta in herramientas %}
+    <a href="#" class="list-group-item list-group-item-action"
+       onclick="selectTool(this); return false;"
+       data-tool-pk="{{ herramienta.pk }}"
+       data-tool-name="{{ herramienta.modelo }}"
+       data-tool-modelo="{{ herramienta.modelo }}"
+       data-tool-fabricante="{{ herramienta.fabricante }}"
+       data-tool-serie="{{ herramienta.numero_serie }}"
+       data-tool-reparacion="{{ herramienta.numero_reparacion }}">
+
+        <strong>{{ herramienta.modelo }}</strong> (Serie: {{ herramienta.numero_serie }})
+    </a>
 {% endfor %}

@@ -116,36 +116,34 @@
 
         // Lógica para el formulario de selección de herramienta
         function selectTool(element) {
-    // Obtenemos todos los datos desde los atributos data-*
-    const toolPk = element.getAttribute('data-tool-pk');
-    const toolName = element.getAttribute('data-tool-name');
-    const toolModelo = element.getAttribute('data-tool-modelo');
-    const toolFabricante = element.getAttribute('data-tool-fabricante');
-    const toolSerie = element.getAttribute('data-tool-serie');
-    const toolReparacion = element.getAttribute('data-tool-reparacion');
+            // Obtenemos todos los datos desde los atributos data-* del elemento clicado
+            const toolPk = element.getAttribute('data-tool-pk');
+            const toolName = element.getAttribute('data-tool-name');
+            const toolModelo = element.getAttribute('data-tool-modelo');
+            const toolFabricante = element.getAttribute('data-tool-fabricante');
+            const toolSerie = element.getAttribute('data-tool-serie');
+            const toolReparacion = element.getAttribute('data-tool-reparacion');
 
-    // Actualizamos todos los campos del formulario
-    document.getElementById('id_herramienta').value = toolPk;
-    document.getElementById('id_text_search').value = toolName;
-    document.getElementById('id_modelo_display').value = toolModelo;
-    document.getElementById('id_fabricante_display').value = toolFabricante;
-    document.getElementById('id_numero_serie_display').value = toolSerie;
-    document.getElementById('id_numero_reparacion_display').value = toolReparacion;
+            // Actualizamos todos los campos del formulario con los datos obtenidos
+            document.getElementById('id_herramienta').value = toolPk;
+            document.getElementById('id_text_search').value = toolName;
+            document.getElementById('id_modelo_display').value = toolModelo;
+            document.getElementById('id_fabricante_display').value = toolFabricante;
+            document.getElementById('id_numero_serie_display').value = toolSerie;
+            document.getElementById('id_numero_reparacion_display').value = toolReparacion;
 
-    // Limpiamos la lista de resultados
-    document.getElementById('search-results').innerHTML = '';
+            // Limpiamos la lista de resultados para que desaparezca
+            document.getElementById('search-results').innerHTML = '';
 
-    // --- LÓGICA DE VERIFICACIÓN AÑADIDA ---
-    const warningDiv = document.getElementById('ticket-duplicado-warning');
-    if (toolPk) {
-        // Construimos la URL y le decimos a HTMX que la procese
-        const url = `/tickets/verificar-duplicado/${toolPk}/`;
-        htmx.ajax('GET', url, {target: warningDiv, swap: 'innerHTML'});
-    } else {
-        // Si por alguna razón no hay ID, limpiamos el div de advertencia
-        warningDiv.innerHTML = '';
-    }
-}
+            // --- Lógica de verificación de duplicados ---
+            const warningDiv = document.getElementById('ticket-duplicado-warning');
+            if (toolPk) {
+                const url = `/tickets/verificar-duplicado/${toolPk}/`;
+                htmx.ajax('GET', url, {target: warningDiv, swap: 'innerHTML'});
+            } else {
+                warningDiv.innerHTML = '';
+            }
+        }
         // Lógica para escuchar las alertas flotantes de SweetAlert2
         document.body.addEventListener('showToast', function (event) {
             const detail = event.detail;

@@ -10,33 +10,16 @@ y utiliza HTMX para interacciones dinámicas en el frontend.
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Field, HTML, Layout, Row, Submit
 from django import forms
+from .models import Ticket, Comentario
+from inventario.models import Ubicacion
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Row, Column, Field, HTML, Submit
 
-from usuarios.models import GrupoNotificacion
-
-from .models import Comentario, Ticket, Ubicacion
-
-
-# ==============================================================================
-# CAMPOS DE FORMULARIO PERSONALIZADOS
-# ==============================================================================
-
+# --- Campo de Formulario Personalizado ---
+# Para que el menú desplegable de "Banda" muestre solo el nombre de la banda.
 class BandaModelChoiceField(forms.ModelChoiceField):
-    """
-    Campo de formulario personalizado para mostrar solo el nombre de la banda.
-
-    Sobrescribe el método `label_from_instance` para que el menú desplegable
-    de 'ubicacion' muestre un valor legible por el usuario (el nombre de la
-    banda) en lugar de la representación de objeto predeterminada de Django.
-    """
-
     def label_from_instance(self, obj):
-        """Devuelve el nombre de la banda para la instancia de Ubicacion."""
-        return f"{obj.banda}"
-
-
-# ==============================================================================
-# FORMULARIOS PRINCIPALES DE LA APLICACIÓN
-# ==============================================================================
+        return obj.banda
 
 class TicketForm(forms.ModelForm):
     """
@@ -154,21 +137,19 @@ class TicketForm(forms.ModelForm):
         label="Notificar a los siguientes grupos",
         required=False
     )
+    operacion = forms.CharField(
+        label="Caso de atornillado",
+        required=True,
+        max_length=10,
+        widget=forms.TextInput(attrs={'placeholder': 'Máx. 10 caracteres'})
+    )
 
     class Meta:
         """Configuración del Meta para el formulario."""
 
         model = Ticket
-        fields = [
-            'herramienta',
-            'falla',
-            'ubicacion',
-            'nave',
-            'comentarios',
-            'tacto',
-            'operacion',
-            'estado'
-        ]
+        # Se eliminan los campos 'nombre_reporta', etc.
+        fields = ['herramienta', 'ubicacion', 'falla', 'comentarios', 'estado', 'tacto', 'operacion']
         widgets = {
             'herramienta': forms.HiddenInput(),
             'comentarios': forms.Textarea(attrs={'rows': 3}),
@@ -183,145 +164,72 @@ class TicketForm(forms.ModelForm):
         - Define la maquetación del formulario utilizando Crispy Forms.
         """
         super().__init__(*args, **kwargs)
+        
+        # --- Lógica para poblar el campo 'ubicacion' con bandas únicas ---
+        unique_band_names = Ubicacion.objects.order_by('banda').values_list('banda', flat=True).distinct()
+        pks_of_unique_bands = []
+        for band_name in unique_band_names:
+            first_ubicacion = Ubicacion.objects.filter(banda=band_name).first()
+            if first_ubicacion:
+                pks_of_unique_bands.append(first_ubicacion.pk)
+        self.fields['ubicacion'].queryset = Ubicacion.objects.filter(pk__in=pks_of_unique_bands).order_by('banda')
 
-        # Configurar opciones de tacto dinámicamente
-        self._setup_tacto_choices()
-
-        # Configurar queryset de ubicacion
-        self._setup_ubicacion_queryset()
-
-        # Configurar layout de Crispy Forms
-        self._setup_crispy_layout()
-
-    def _setup_tacto_choices(self):
-        """Configura las opciones del campo tacto."""
-        tacto_choices = [('', '---------')]
-
-        # Agregar números del 1 al 30
-        tacto_choices.extend([
-            (str(i), str(i))
-            for i in range(self.TACTO_RANGE_START, self.TACTO_RANGE_END)
-        ])
-
-        # Agregar opciones OP (10, 20, ..., 150)
-        tacto_choices.extend([
-            (f'OP{j}', f'OP{j}')
-            for j in range(
-                self.OP_RANGE_START,
-                self.OP_RANGE_END,
-                self.OP_RANGE_STEP
-            )
-        ])
-
-        self.fields['tacto'].choices = tacto_choices
-
-    def _setup_ubicacion_queryset(self):
-        """Configura el queryset de ubicacion con bandas únicas."""
-        unique_band_names = Ubicacion.objects.order_by('banda').values_list(
-            'banda', flat=True
-        ).distinct()
-
-        pks_of_unique_bands = [
-            Ubicacion.objects.filter(banda=name).first().pk
-            for name in unique_band_names
-            if Ubicacion.objects.filter(banda=name).exists()
-        ]
-
-        self.fields['ubicacion'].queryset = Ubicacion.objects.filter(
-            pk__in=pks_of_unique_bands
-        ).order_by('banda')
-
-    def _setup_crispy_layout(self):
-        """Configura el layout del formulario con Crispy Forms."""
+        # --- Configuración del Layout ---
         self.helper = FormHelper()
         self.helper.form_method = 'post'
         self.helper.layout = Layout(
-            # Información general (no editable)
+            # --- Sección Superior (INTACTA, como la pediste) ---
             Row(
-                Column(
-                    Field('fecha_actual', readonly=True),
-                    css_class='col-md-4'
-                ),
-                Column(
-                    Field('turno_actual', readonly=True),
-                    css_class='col-md-4'
-                ),
-                Column(
-                    Field('grupo', readonly=True),
-                    css_class='col-md-4'
-                )
+                Column(Field('fecha_actual', readonly=True), css_class='col-md-4'),
+                Column(Field('turno_actual', readonly=True), css_class='col-md-4'),
+                Column(Field('grupo', readonly=True), css_class='col-md-4')
             ),
             HTML('<hr>'),
-
-            # Sección 1: Ubicación de la falla
             HTML('<h5 class="mb-3">1. Ubicación de la Falla</h5>'),
             Row(
                 Column('ubicacion', css_class='col-md-3'),
-                Column('nave', css_class='col-md-3'),
+                Column(
+                    HTML('<div id="nave-container">'),
+                    'nave_display', 
+                    HTML('</div>'),
+                    css_class='col-md-3'
+                ),
                 Column('tacto', css_class='col-md-3'),
                 Column('operacion', css_class='col-md-3'),
                 css_class='align-items-end'
             ),
             HTML('<hr>'),
 
-            # Sección 2: Datos de la herramienta
+            # --- SECCIÓN DE HERRAMIENTA (AÑADIDA COMO LA QUERÍAS) ---
             HTML('<h5 class="mb-3">2. Datos de la Herramienta</h5>'),
-            HTML('''
-                <div class="search-container mb-3">
-                    <input type="hidden" id="primera-busqueda" value="true">
-                </div>
-            '''),
             'text_search',
-            HTML('<div class="htmx-indicator">Buscando...</div>'),
-            HTML('''
-                <div id="search-results" class="list-group mb-3"></div>
-                <div id="no-results-alert" class="alert alert-warning" 
-                     style="display:none;">
-                    <h5>⚠️ Herramienta no encontrada</h5>
-                    <p>No se encontró ninguna herramienta con ese criterio.</p>
-                    <button type="button" class="btn btn-primary" 
-                            onclick="mostrarModalCrearHerramienta()">
-                        ➕ Crear Nueva Herramienta
-                    </button>
-                </div>
-            '''),
+            HTML('<div class="htmx-indicator text-muted small">Buscando...</div>'),
             Row(
-                Column('modelo_display'),
-                Column('fabricante_display')
+                Column(Field('modelo_display', readonly=True)),
+                Column(Field('fabricante_display', readonly=True)),
             ),
             Row(
-                Column('numero_serie_display'),
-                Column('numero_reparacion_display')
+                Column(Field('numero_serie_display', readonly=True)),
+                Column(Field('numero_reparacion_display', readonly=True)),
             ),
-            'herramienta',
-            HTML('<div id="ticket-duplicado-warning"></div>'),
+            HTML('<div id="search-results" class="list-group mb-3"></div>'),
+            'herramienta', # Campo oculto
+            HTML('<div id="ticket-duplicado-warning" class="mt-2"></div>'),
             HTML('<hr>'),
 
-            # Sección 3: Descripción y notificaciones
-            HTML('<h5 class="mb-3">3. Descripción de la Falla y '
-                 'Notificación</h5>'),
-            Row(
-                Column('falla'),
-                Column('comentarios')
-            ),
-            HTML('<div class="card mt-3"><div class="card-body">'),
-            'grupos_notificacion',
-            HTML('</div></div>'),
+            # --- SECCIONES FINALES (AJUSTADAS Y SIN CAMPOS EXTRA) ---
+            HTML('<h5 class="mb-3">3. Descripción de la Falla</h5>'),
+            Row(Column('falla'), Column('comentarios')),
             HTML('<hr>'),
-
-            # Sección 4: Estado del ticket
             HTML('<h5 class="mb-3">4. Estado del Ticket</h5>'),
             'estado',
-
-            # Botón de envío
-            Submit(
-                'submit',
-                'Guardar Ticket',
-                css_class='btn btn-primary mt-4 w-100'
-            )
+            
+            Submit('submit', 'Guardar Ticket', css_class='btn btn-primary mt-4 w-100')
         )
 
 
+
+# --- Formularios Adicionales (Sin Cambios) ---
 class ActualizarEstadoForm(forms.ModelForm):
     """Formulario simple para actualizar únicamente el estado de un ticket."""
 
@@ -330,10 +238,7 @@ class ActualizarEstadoForm(forms.ModelForm):
 
         model = Ticket
         fields = ['estado']
-        labels = {
-            'estado': ''
-        }
-
+        labels = { 'estado': '' }
 
 class ComentarioForm(forms.ModelForm):
     """Formulario para la creación de nuevos comentarios en un ticket."""
@@ -350,6 +255,4 @@ class ComentarioForm(forms.ModelForm):
                 'placeholder': 'Añade una actualización o nota...'
             }),
         }
-        labels = {
-            'texto': 'Nuevo Comentario'
-        }
+        labels = { 'texto': 'Nuevo Comentario' }
