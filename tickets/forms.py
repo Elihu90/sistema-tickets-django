@@ -166,6 +166,12 @@ class TicketForm(forms.ModelForm):
         """
         super().__init__(*args, **kwargs)
         
+        # --- Poblar opciones de Tacto ---
+        tacto_choices = [('', '---------')]
+        for i in range(self.TACTO_RANGE_START, self.TACTO_RANGE_END):
+            tacto_choices.append((str(i), str(i)))
+        self.fields['tacto'].choices = tacto_choices
+        
         # --- Lógica para poblar el campo 'ubicacion' con bandas únicas ---
         unique_band_names = Ubicacion.objects.order_by('banda').values_list('banda', flat=True).distinct()
         pks_of_unique_bands = []
@@ -189,13 +195,8 @@ class TicketForm(forms.ModelForm):
             HTML('<h5 class="mb-3">1. Ubicación de la Falla</h5>'),
             Row(
                 Column('ubicacion', css_class='col-md-3'),
-                Column(
-                    HTML('<div id="nave-container">'),
-                    'nave_display', 
-                    HTML('</div>'),
-                    css_class='col-md-3'
-                ),
-                Column('tacto', css_class='col-md-3'),
+                Column('nave', css_class='col-md-2'),
+                Column('tacto', css_class='col-md-2'),
                 Column('operacion', css_class='col-md-3'),
                 css_class='align-items-end'
             ),

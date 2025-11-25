@@ -1,17 +1,57 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h2>Confirmar Eliminación</h2>
-    </div>
-    <div class="card-body">
-        <p>¿Estás seguro de que deseas eliminar al colaborador <strong>{{ object }}</strong>?</p>
-        <form method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
-            <a href="{% url 'colaborador_list' %}" class="btn btn-secondary">Cancelar</a>
-        </form>
+<div class="container mt-5">
+    <div class="card shadow-lg border-danger">
+        <div class="card-header bg-danger text-white">
+            <h3 class="mb-0">⚠ Confirmar Baja de Colaborador</h3>
+        </div>
+        <div class="card-body">
+            <h4 class="card-title">¿Qué deseas hacer con el colaborador: <strong>{{ object }}</strong>?</h4>
+
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-info-circle-fill"></i>
+                <strong>Nota:</strong> Este colaborador tiene un usuario de sistema asociado ({{ object.usuario.username
+                }}).
+            </div>
+
+            <p class="card-text mt-3">Selecciona una opción:</p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="d-grid gap-3">
+                    <!-- Opción Recomendada: Soft Delete -->
+                    <button type="submit" name="action" value="soft" class="btn btn-warning btn-lg text-start">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person-dash-fill fs-2 me-3"></i>
+                            <div>
+                                <strong>Dar de Baja (Recomendado)</strong><br>
+                                <small>El colaborador se marcará como "Inactivo" y su usuario se desactivará. No podrá
+                                    iniciar sesión, pero se conservará su historial.</small>
+                            </div>
+                        </div>
+                    </button>
+
+                    <!-- Opción Destructiva: Hard Delete -->
+                    <button type="submit" name="action" value="hard" class="btn btn-outline-danger text-start"
+                        onclick="return confirm('¿Estás SEGURO? Esto eliminará al colaborador y su usuario de sistema PERMANENTEMENTE. Si tiene tickets asociados, esta acción fallará por seguridad.');">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-trash-fill fs-2 me-3"></i>
+                            <div>
+                                <strong>Eliminar Permanentemente</strong><br>
+                                <small>Se borrará el colaborador y su usuario. <strong>Solo posible si no tiene tickets
+                                        creados.</strong></small>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <a href="{% url 'colaborador_list' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

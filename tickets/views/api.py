@@ -42,7 +42,11 @@ def buscar_herramientas(request):
     """
     query = request.POST.get('text_search', '')
     if query:
-        herramientas = Herramienta.objects.filter(numero_serie__icontains=query) | Herramienta.objects.filter(modelo__icontains=query)
+        herramientas = Herramienta.objects.filter(activo=True).filter(
+            numero_serie__icontains=query
+        ) | Herramienta.objects.filter(activo=True).filter(
+            modelo__icontains=query
+        )
     else:
         herramientas = []
     return render(request, 'tickets/partials/search_results.html', {'herramientas': herramientas})

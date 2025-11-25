@@ -38,6 +38,7 @@ class Herramienta(models.Model):
     modelo = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     estado = models.CharField(max_length=50, blank=True, null=True)
     ejecucion = models.CharField(max_length=100, blank=True, null=True)
+    activo = models.BooleanField(default=True, verbose_name="Activo")
     
     # Relación con la ubicación
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, blank=True)
