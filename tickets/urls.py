@@ -22,16 +22,16 @@ urlpatterns = [
     # --- NUEVA URL PARA VERIFICAR DUPLICADOS ---
     path('verificar-duplicado/<int:herramienta_pk>/', views.verificar_ticket_duplicado, name='verificar_ticket_duplicado'),
     
-        # --- NUEVA URL PARA LOS DATOS DE LA GRÁFICA ---
+    # --- NUEVA URL PARA LOS DATOS DE LA GRÁFICA ---
     path('data/tickets-por-estado/', views.ticket_estado_data, name='ticket_estado_data'),
     
     
     path('dashboard/exportar/', views.exportar_tickets_excel, name='exportar_tickets'),
     
-# --- URL ÚNICA PARA TODOS LOS DETALLES EN POP-UP ---
+    # --- URL ÚNICA PARA TODOS LOS DETALLES EN POP-UP ---
     path('modal/detalles-filtrados/', views.detalles_filtrados_modal, name='modal_detalles_filtrados'),
     
-
+    
     
     # URLs para Notificaciones
     path('notificaciones/', views.ver_notificaciones, name='ver_notificaciones'),

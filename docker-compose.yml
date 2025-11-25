@@ -1,24 +1,62 @@
 version: '3.8'
+
 services:
   db:
-    image: postgres:17
+    image: postgres:17-alpine
+    container_name: sgtr_db
     environment:
       POSTGRES_DB: stgr_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+    restart: unless-stopped
 
   web:
     build: .
-    command: gunicorn sgtr.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    container_name: sgtr_web
+    command: gunicorn sgtr.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --access-logfile - --error-logfile -
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - ./logs:/app/logs
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=sgtr.settings
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/stgr_db
+      - DEBUG=${DEBUG:-False}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this-in-production}
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres123}@db:5432/stgr_db
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+    networks:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
 volumes:
   pgdata:
+    driver: local
+  static_volume:
+    driver: local
+  media_volume:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge

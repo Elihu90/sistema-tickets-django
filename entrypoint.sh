@@ -1,22 +1,37 @@
-
 #!/bin/sh
-set -e  # Detener si hay error
+# Entrypoint script para Docker
 
-echo "Aplicando migraciones..."
+set -e
+
+echo "Esperando a que PostgreSQL esté listo..."
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h "db" -U "postgres" -c '\q' 2>/dev/null; do
+  >&2 echo "PostgreSQL no está disponible - esperando..."
+  sleep 1
+done
+
+echo "PostgreSQL está listo - continuando..."
+
+# Aplicar migraciones
+echo "Aplicando migraciones de base de datos..."
 python manage.py migrate --noinput
 
-echo "Ejecutando collectstatic..."
-python manage.py collectstatic --noinput
+# Recolectar archivos estáticos
+echo "Recolectando archivos estáticos..."
+python manage.py collectstatic --noinput --clear
 
-echo "Ejecutando scripts de importación..."
+# Crear superusuario si no existe (solo en desarrollo)
+if [ "$DEBUG" = "True" ]; then
+    echo "Modo desarrollo detectado"
+    python manage.py shell << END
+from django.contrib.auth import get_user_model
+User = get_user_model()
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
+    print('Superusuario creado: admin/admin123')
+else:
+    print('Superusuario ya existe')
+END
+fi
 
-# Ejecuta tus comandos de Django
-python manage.py import_herramientas
-python manage.py import_colaboradores
-python manage.py poblar_ubicaciones
-python manage.py generar_tickets_falsos
-
-echo "Todos los scripts ejecutados correctamente."
-
-# Inicia Gunicorn
+echo "Iniciando servidor..."
 exec "$@"

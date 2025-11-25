@@ -1,0 +1,33 @@
+# Archivos de entorno virtual
+.venv/
+venv/
+env/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Archivos del IDE (PyCharm, VSCode, etc.)
+.idea/
+.vscode/
+
+# Archivos de entorno
+.env
+
+# Archivos CSV con datos sensibles
+*.csv
+
+# Base de datos
+db.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Archivos estáticos y media
+staticfiles/
+media/
+
+# Claves y certificados
+*.pem
+*.key

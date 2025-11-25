@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2>Colaboradores</h2>
+        <a href="{% url 'colaborador_add' %}" class="btn btn-primary">Nuevo Colaborador</a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nombre Completo</th>
+                        <th>Email</th>
+                        <th>Puesto</th>
+                        <th>Activo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for colaborador in colaboradores %}
+                    <tr>
+                        <td>{{ colaborador.usuario.username }}</td>
+                        <td>{{ colaborador.usuario.get_full_name }}</td>
+                        <td>{{ colaborador.usuario.email }}</td>
+                        <td>{{ colaborador.puesto }}</td>
+                        <td>{{ colaborador.activo|yesno:"Sí,No" }}</td>
+                        <td>
+                            <a href="{% url 'colaborador_edit' colaborador.pk %}"
+                                class="btn btn-sm btn-warning">Editar</a>
+                            <a href="{% url 'colaborador_delete' colaborador.pk %}"
+                                class="btn btn-sm btn-danger">Eliminar</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No hay colaboradores registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

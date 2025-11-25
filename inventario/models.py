@@ -1,9 +1,14 @@
 # inventario/models.py
+"""
+Modelos para el inventario de herramientas y ubicaciones.
+Optimizado con índices de base de datos.
+"""
 
 from django.db import models
 
-# Modelo Ubicacion con la nueva estructura de campos separados
+
 class Ubicacion(models.Model):
+    """Ubicación física de una herramienta en la planta."""
     nave = models.CharField(max_length=50, blank=True, null=True)
     banda = models.CharField(max_length=50, blank=True, null=True)
     tacto = models.CharField(max_length=50, blank=True, null=True)
@@ -19,18 +24,22 @@ class Ubicacion(models.Model):
         unique_together = ('nave', 'banda', 'tacto', 'operacion')
         verbose_name = 'Ubicación'
         verbose_name_plural = 'Ubicaciones'
+        indexes = [
+            models.Index(fields=['nave', 'banda'], name='ubicacion_nave_banda_idx'),
+        ]
 
-# Tu modelo Herramienta, con la relación a la nueva Ubicacion
+
 class Herramienta(models.Model):
-    numero_serie = models.CharField(max_length=100, unique=True)
+    """Herramienta del inventario."""
+    numero_serie = models.CharField(max_length=100, unique=True, db_index=True)
     numero_reparacion = models.CharField(max_length=100, blank=True, null=True)
     tipo = models.CharField(max_length=50, blank=True, null=True)
-    fabricante = models.CharField(max_length=100, blank=True, null=True)
-    modelo = models.CharField(max_length=100, blank=True, null=True)
+    fabricante = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    modelo = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     estado = models.CharField(max_length=50, blank=True, null=True)
     ejecucion = models.CharField(max_length=100, blank=True, null=True)
     
-    # Añadimos la relación con la ubicación
+    # Relación con la ubicación
     ubicacion = models.ForeignKey(Ubicacion, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
@@ -39,3 +48,7 @@ class Herramienta(models.Model):
     class Meta:
         verbose_name = 'Herramienta'
         verbose_name_plural = 'Herramientas'
+        indexes = [
+            models.Index(fields=['fabricante', 'modelo'], name='herramienta_fab_modelo_idx'),
+            models.Index(fields=['ubicacion'], name='herramienta_ubicacion_idx'),
+        ]
