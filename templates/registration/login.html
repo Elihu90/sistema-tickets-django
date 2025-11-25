@@ -5,35 +5,80 @@
 {% block content %}
 <style>
     .login-carousel-item {
-        height: 85vh;
-        min-height: 500px;
-        background: no-repeat center center scroll;
-        -webkit-background-size: cover;
-        <div id="loginCarousel" class="carousel slide carousel-fade h-100" data-bs-ride="carousel"><div class="carousel-indicators"><button type="button" data-bs-target="#loginCarousel" data-bs-slide-to="0" class="active"
-        aria-current="true"></button><button type="button" data-bs-target="#loginCarousel" data-bs-slide-to="1"></button><button type="button" data-bs-target="#loginCarousel" data-bs-slide-to="2"></button></div><div class="carousel-inner h-100"><div class="carousel-item active login-carousel-item"
-        style="background-image: url('{% static 'img/audi_q5.png' %}');"><div class="carousel-caption d-none d-md-block mb-5"><h2 class="display-5 fw-bold">Audi Q5 2025</h2><p class="lead">Liderazgo a través de la tecnología.</p></div></div><div class="carousel-item login-carousel-item"
-        style="background-image: url('{% static 'img/audi_q5_interior.png' %}');"><div class="carousel-caption d-none d-md-block mb-5"><h2 class="display-5 fw-bold">Confort Absoluto</h2><p class="lead">Un interior diseñado para tus sentidos.</p></div></div><div class="carousel-item login-carousel-item"
+        height: 100vh;
+        background-size: cover;
+        background-position: center;
+    }
 
-        style="background-image: url('{% static 'img/audi_q5_rear.png' %}');"><div class="carousel-caption d-none d-md-block mb-5"><h2 class="display-5 fw-bold">Potencia Pura</h2><p class="lead">Rendimiento que inspira.</p></div></div></div></div></div>< !-- Login Form Section --><div class="col-lg-5"><div class="login-container justify-content-center"><div class="card shadow-lg border-0 p-4" style="width: 100%; max-width: 450px;"><div class="card-body"><div class="text-center mb-4"><h2 class="fw-bold text-primary">Bienvenido</h2><p class="text-muted">Ingresa a tu cuenta para continuar</p></div> {
-            % if form.errors %
-        }
+    .login-form-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.5);
+    }
+</style>
 
-        <div class="alert alert-danger rounded-pill text-center"><small>Usuario o contraseña incorrectos</small></div> {
-            % endif %
-        }
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- Carousel Section -->
+        <div class="col-lg-7 d-none d-lg-block">
+            <div id="loginCarousel" class="carousel slide carousel-fade h-100" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                    <button type="button" data-bs-target="#loginCarousel" data-bs-slide-to="0" class="active"
+                        aria-current="true"></button>
+                    <button type="button" data-bs-target="#loginCarousel" data-bs-slide-to="1"></button>
+                    <button type="button" data-bs-target="#loginCarousel" data-bs-slide-to="2"></button>
+                </div>
+                <div class="carousel-inner h-100">
+                    <div class="carousel-item active login-carousel-item"
+                        style="background-image: url('{% static 'img/audi_q5.png' %}');">
+                        <div class="carousel-caption d-none d-md-block mb-5">
+                            <h2 class="display-5 fw-bold">Audi Q5 2025</h2>
+                            <p class="lead">Liderazgo a través de la tecnología.</p>
+                        </div>
+                    </div>
+                    <div class="carousel-item login-carousel-item"
+                        style="background-image: url('{% static 'img/audi_q5_interior.png' %}');">
+                        <div class="carousel-caption d-none d-md-block mb-5">
+                            <h2 class="display-5 fw-bold">Confort Absoluto</h2>
+                            <p class="lead">Un interior diseñado para tus sentidos.</p>
+                        </div>
+                    </div>
+                    <div class="carousel-item login-carousel-item"
+                        style="background-image: url('{% static 'img/audi_q5_rear.png' %}');">
+                        <div class="carousel-caption d-none d-md-block mb-5">
+                            <h2 class="display-5 fw-bold">Potencia Pura</h2>
+                            <p class="lead">Rendimiento que inspira.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <form method="post"> {
-            % csrf_token %
-        }
+        <!-- Login Form Section -->
+        <div class="col-lg-5">
+            <div class="login-form-container">
+                <div class="glass-card p-4 p-md-5" style="width: 100%; max-width: 450px;">
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold" style="color: var(--audi-red);">Bienvenido</h2>
+                        <p class="text-muted">Ingresa a tu cuenta para continuar</p>
+                    </div>
 
-            {
-                {
-                form|crispy
-            }
-        }
+                    {% if form.errors %}
+                    <div class="alert alert-danger rounded-3 text-center">
+                        <small>Usuario o contraseña incorrectos</small>
+                    </div>
+                    {% endif %}
 
-        <div class="d-grid mt-4"><button type="submit" class="btn btn-primary btn-lg rounded-pill shadow-sm">Iniciar Sesión</button></div></form><div class="text-center mt-3"><small class="text-muted">Sistema de Gestión de Tickets &copy;
-
-        2025</small></div></div></div></div></div></div> {
-            % endblock %
-        }
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Iniciar Sesión</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
