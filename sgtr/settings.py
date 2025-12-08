@@ -28,6 +28,10 @@ except Exception as e:
 # SEGURIDAD - ISO 27001 Compliance
 # ==============================================================================
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# ISO 27001: A.12.4.1 - Event logging
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
 # SECURITY WARNING: keep the secret key used in production secret!
 # ISO 27001: A.9.4.3 - Password management system
 SECRET_KEY = os.environ.get('SECRET_KEY')
@@ -40,10 +44,6 @@ if not SECRET_KEY:
         # En producción es OBLIGATORIO usar variable de entorno
         from django.core.exceptions import ImproperlyConfigured
         raise ImproperlyConfigured("La variable de entorno SECRET_KEY es obligatoria en producción.")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-# ISO 27001: A.12.4.1 - Event logging
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 # ISO 27001: A.13.1.3 - Segregation in networks
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
