@@ -23,7 +23,8 @@ Write-Host "Directorio del proyecto: $ProjectPath" -ForegroundColor Green
 # 2. Hacer pull de los últimos cambios
 Write-Host "`nObteniendo últimos cambios de GitHub..." -ForegroundColor Yellow
 git fetch origin
-git pull origin antigravity
+# Modificado para forzar la sincronización con el historial limpio (maneja reescrituras de historia)
+git reset --hard origin/antigravity
 
 # 3. Recolectar archivos estáticos (para las nuevas imágenes)
 Write-Host "`nRecolectando archivos estáticos..." -ForegroundColor Yellow
