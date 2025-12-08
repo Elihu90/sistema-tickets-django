@@ -1,0 +1,5 @@
+{% for notificacion in notificaciones %}
+<li><a class="dropdown-item" href="{% url 'marcar_leida_y_redirigir' notificacion.pk %}">{{ notificacion.mensaje }}</a></li>
+{% empty %}
+<li><span class="dropdown-item-text">No tienes notificaciones nuevas.</span></li>
+{% endfor %}

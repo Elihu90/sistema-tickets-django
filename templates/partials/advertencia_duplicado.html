@@ -1,0 +1,17 @@
+{% if tickets_duplicados %}
+<div class="alert alert-warning mt-3" role="alert">
+    <h4 class="alert-heading">¡Advertencia!</h4>
+    <p>Ya existe al menos un ticket abierto o en reparación para esta herramienta:</p>
+    <hr>
+    <ul class="mb-0">
+        {% for ticket in tickets_duplicados %}
+        <li>
+            <strong>Folio: {{ ticket.folio }}</strong> (Estado: {{ ticket.estado.nombre }}) - Creado el {{ ticket.fecha_creacion|date:"d/m/Y" }}.
+            <a href="{% url 'detalles_ticket' ticket.pk %}" target="_blank" class="ms-2">Ver Detalles</a>
+        </li>
+        {% endfor %}
+    </ul>
+    <hr>
+    <p class="mb-0">Por favor, revisa el ticket existente antes de crear uno nuevo para una falla diferente.</p>
+</div>
+{% endif %}

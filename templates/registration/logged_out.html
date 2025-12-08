@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card text-center">
+    <div class="card-body">
+        <h2 class="card-title">Has cerrado sesión</h2>
+        <p class="card-text">Gracias por usar el sistema. Puedes volver a iniciar sesión cuando quieras.</p>
+        <a href="{% url 'login' %}" class="btn btn-primary">Iniciar Sesión de Nuevo</a>
+    </div>
+</div>
+{% endblock %}

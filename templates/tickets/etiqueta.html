@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Etiqueta Ticket {{ ticket.folio }}</title>
+    <style>
+        @page {
+            size: 75mm 24mm;
+            margin: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 8px;
+            /* Equivalente cercano a 7pt */
+            line-height: 1.1;
+            margin: 0;
+            padding: 2mm;
+            /* Margen interno de seguridad */
+            width: 75mm;
+            height: 24mm;
+            overflow: hidden;
+            /* Evitar desbordamiento */
+            color: black;
+            background: white;
+        }
+
+        .line {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+    <script>
+        window.onload = function () {
+            window.print();
+            // Opcional: Cerrar después de imprimir si el usuario lo desea, 
+            // pero mejor dejarlo abierto para confirmar.
+            // window.onafterprint = function() { window.close(); }
+        }
+    </script>
+</head>
+
+<body>
+    <div class="line"><strong>Fecha:</strong> {% now "d/m/Y H:i" %}</div>
+    <div class="line"><strong>Generado por:</strong> {{ ticket.creado_por.username|default:"Sistema" }}</div>
+    <div class="row">
+        <span class="line"><strong>Banda:</strong> {{ ticket.ubicacion.banda|default:"N/A" }}</span>
+        <span class="line"><strong>Tacto:</strong> {{ ticket.tacto|default:"N/A" }}</span>
+    </div>
+    <div class="row">
+        <span class="line"><strong>Mod:</strong> {{ ticket.herramienta.modelo|default:"N/A" }}</span>
+        <span class="line"><strong>Fab:</strong> {{ ticket.herramienta.fabricante|default:"N/A" }}</span>
+    </div>
+    <div class="line"><strong>Serie:</strong> {{ ticket.herramienta.numero_serie|default:"N/A" }}</div>
+    <div class="line"><strong>Desc:</strong> {{ ticket.falla.descripcion|default:"N/A"|truncatechars:35 }}</div>
+
+    {% if ticket.comentarios %}
+    <div class="line"><strong>Com:</strong> {{ ticket.comentarios|truncatechars:40 }}</div>
+    {% endif %}
+
+    <div class="line bold" style="margin-top: 1px; border-top: 1px solid black; padding-top: 1px;">
+        Ticket: {{ ticket.folio }}
+        {% if ticket.numero_ticket_externo %} / OT: {{ ticket.numero_ticket_externo }} {% endif %}
+    </div>
+</body>
+
+</html>

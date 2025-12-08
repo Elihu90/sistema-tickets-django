@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center min-vh-100 py-5">
+    <div class="col-12 col-lg-10 col-xl-8">
+        <div class="glass-card animate-fade-up p-4 p-md-5">
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-uppercase" style="letter-spacing: 2px; color: var(--audi-red);">
+                    {{ titulo|default:"Nuevo Ticket" }}
+                </h1>
+                <p class="lead text-muted">Sistema de Gestión de Reparaciones</p>
+                <div
+                    style="height: 4px; width: 60px; background-color: var(--audi-red); margin: 0 auto; border-radius: 2px;">
+                </div>
+            </div>
+
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} shadow-sm border-0 rounded-3 mb-4">
+                <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <div class="form-container">
+                {% crispy form %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Impresión Automática -->
+{% if ticket_creado %}
+<div class="modal fade" id="printModal" tabindex="-1" aria-labelledby="printModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="printModalLabel">Ticket Creado: {{ ticket_creado.folio }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-4">El ticket se ha registrado correctamente.<br>¿Deseas imprimir la etiqueta ahora?</p>
+                <div class="d-grid gap-2 col-8 mx-auto">
+                    <a href="{% url 'imprimir_etiqueta' ticket_creado.pk %}" class="btn btn-warning btn-lg"
+                        onclick="window.open(this.href, 'Imprimir Etiqueta', 'width=400,height=250'); return false;">
+                        <i class="bi bi-printer-fill me-2"></i> Imprimir Etiqueta
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function selectTool(element) {
+        // Obtener datos del elemento clicado
+        const pk = element.getAttribute('data-tool-pk');
+        const name = element.getAttribute('data-tool-name');
+        const modelo = element.getAttribute('data-tool-modelo');
+        const fabricante = element.getAttribute('data-tool-fabricante');
+        const serie = element.getAttribute('data-tool-serie');
+        const reparacion = element.getAttribute('data-tool-reparacion');
+
+        // Llenar los campos del formulario
+        document.getElementById('id_herramienta').value = pk;
+        document.getElementById('id_text_search').value = name;
+
+        // Campos de solo lectura
+        document.getElementById('id_modelo_display').value = modelo;
+        document.getElementById('id_fabricante_display').value = fabricante;
+        document.getElementById('id_numero_serie_display').value = serie;
+        document.getElementById('id_numero_reparacion_display').value = reparacion;
+
+        // Limpiar resultados de búsqueda
+        document.getElementById('search-results').innerHTML = '';
+
+        // Verificar duplicados usando HTMX
+        if (typeof htmx !== 'undefined') {
+            htmx.ajax('GET', `/tickets/verificar-duplicado/${pk}/`, '#ticket-duplicado-warning');
+        }
+    }
+
+    // Permitir selección con Enter en los resultados de búsqueda
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('id_text_search');
+        if (searchInput) {
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const firstResult = document.querySelector('#search-results .list-group-item');
+                    if (firstResult) {
+                        selectTool(firstResult);
+                    }
+                }
+            });
+        }
+    });
+
+    // Abrir modal de impresión automáticamente si existe
+    document.addEventListener('DOMContentLoaded', function () {
+        var printModalEl = document.getElementById('printModal');
+        if (printModalEl) {
+            var printModal = new bootstrap.Modal(printModalEl);
+            printModal.show();
+        }
+    });
+</script>
+{% endblock %}

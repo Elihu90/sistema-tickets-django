@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Diario de Tickets</title>
+    <style>
+        body { font-family: sans-serif; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #dddddd; text-align: left; padding: 12px; }
+        th { background-color: #f2f2f2; }
+        h2 { color: #555; }
+    </style>
+</head>
+<body>
+    <h2>Reporte de Tickets Creados</h2>
+    <p>Resumen de los tickets generados en las últimas 24 horas (hasta el {{ fecha_reporte|date:"d/m/Y H:i" }}).</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Folio</th>
+                <th>Herramienta</th>
+                <th>Falla</th>
+                <th>Generado por</th>
+                <th>Hora de Creación</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>{{ ticket.folio }}</td>
+                <td>{{ ticket.herramienta }}</td>
+                <td>{{ ticket.falla.codigo|default:"N/A" }}</td>
+                <td>{{ ticket.creado_por.username }}</td>
+                <td>{{ ticket.fecha_creacion|date:"H:i" }} hrs</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p>Por favor, revisa el sistema para más detalles.</p>
+</body>
+</html>

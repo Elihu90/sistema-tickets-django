@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Eliminar Refacción</h2>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <h4>¿Estás seguro de que deseas eliminar esta refacción?</h4>
+            <p><strong>Número SAP:</strong> {{ object.numero_sap }}</p>
+            <p><strong>Descripción:</strong> {{ object.descripcion }}</p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="d-flex gap-2">
+                <button type="submit" name="action" value="soft" class="btn btn-warning">
+                    Dar de Baja (Soft Delete)
+                </button>
+                <button type="submit" name="action" value="hard" class="btn btn-danger"
+                    onclick="return confirm('¿Estás COMPLETAMENTE seguro? Esta acción NO se puede deshacer.');">
+                    Eliminar Permanentemente (Hard Delete)
+                </button>
+                <a href="{% url 'refaccion_list' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

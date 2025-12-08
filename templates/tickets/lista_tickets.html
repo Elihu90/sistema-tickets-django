@@ -1,0 +1,135 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Lista de Tickets de Reparación</h2>
+            {% if perms.tickets.add_ticket %}
+            <a href="{% url 'crear_ticket' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Ticket
+            </a>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <!-- Formulario de Búsqueda y Filtrado -->
+            <form method="get" class="row g-3 mb-4 p-3 rounded border border-secondary" style="background-color: rgba(255, 255, 255, 0.05);">
+                <!-- Búsqueda General -->
+                <div class="col-md-4">
+                    <label for="q" class="form-label fw-bold text-white-50">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-white-50"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control bg-dark border-secondary text-white" id="q" name="q" value="{{ busqueda_actual }}"
+                            placeholder="Folio, serie, modelo...">
+                    </div>
+                </div>
+
+                <!-- Filtro de Estado -->
+                <div class="col-md-2">
+                    <label for="estado" class="form-label fw-bold text-white-50">Estado</label>
+                    <select class="form-select bg-dark border-secondary text-white" id="estado" name="estado">
+                        <option value="">Todos</option>
+                        {% for estado in opciones_estado %}
+                        <option value="{{ estado.pk }}" {% if estado_actual == estado.pk %}selected{% endif %}>
+                            {{ estado.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Fecha Inicio -->
+                <div class="col-md-2">
+                    <label for="fecha_inicio" class="form-label fw-bold text-white-50">Desde</label>
+                    <input type="date" class="form-control bg-dark border-secondary text-white" id="fecha_inicio" name="fecha_inicio"
+                        value="{{ fecha_inicio_actual }}">
+                </div>
+
+                <!-- Fecha Fin -->
+                <div class="col-md-2">
+                    <label for="fecha_fin" class="form-label fw-bold text-white-50">Hasta</label>
+                    <input type="date" class="form-control bg-dark border-secondary text-white" id="fecha_fin" name="fecha_fin"
+                        value="{{ fecha_fin_actual }}">
+                </div>
+
+                <!-- Botones -->
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                    <a href="{% url 'lista_tickets' %}" class="btn btn-outline-secondary" title="Limpiar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Folio</th>
+                            <th>Herramienta (S/N)</th>
+                            <th>Falla Reportada</th>
+                            <th>Estado</th>
+                            <th>Creado Por</th>
+                            <th>Fecha de Creación</th>
+                            <th>Turno</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in tickets %}
+                        <tr>
+                            <td><a href="{% url 'detalles_ticket' ticket.pk %}"><strong>{{ ticket.folio }}</strong></a>
+                            </td>
+                            <td>{{ ticket.herramienta.modelo }} ({{ ticket.herramienta.numero_serie }})</td>
+                            <td>{{ ticket.falla.descripcion|default:"N/A" }}</td>
+                            <td>
+                                {% if perms.tickets.change_ticket %}
+                                <form hx-post="{% url 'actualizar_estado_ticket' ticket.pk %}" hx-target="body"
+                                    hx-swap="none" class="mb-0">
+                                    {% csrf_token %}
+                                    <select name="estado" class="form-select form-select-sm fw-bold
+                                            {% if ticket.estado.nombre == 'Abierto' %} bg-danger text-white
+                                            {% elif ticket.estado.nombre == 'En Reparación' %} bg-warning text-dark
+                                            {% elif ticket.estado.nombre == 'Cerrado' %} bg-success text-white
+                                            {% else %} bg-secondary text-white
+                                            {% endif %}" onchange="this.form.requestSubmit()">
+                                        {% for estado_opcion in opciones_estado %}
+                                        <option value="{{ estado_opcion.pk }}" {% if ticket.estado.pk == estado_opcion.pk %}selected{% endif %}>
+                                            {{ estado_opcion.nombre }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                                {% else %}
+                                <span class="badge fs-6
+                                        {% if ticket.estado.nombre == 'Abierto' %} bg-danger
+                                        {% elif ticket.estado.nombre == 'En Reparación' %} bg-warning text-dark
+                                        {% elif ticket.estado.nombre == 'Cerrado' %} bg-success
+                                        {% else %} bg-secondary
+                                        {% endif %}">
+                                    {{ ticket.estado.nombre }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ ticket.creado_por.username }}</td>
+                            <td>{{ ticket.fecha_creacion| date:"d/m/Y H:i" }}</td>
+                            <td>{{ ticket.turno|default:"N/A" }}</td>
+                            <td>
+                                <a href="{% url 'detalles_ticket' ticket.pk %}" class="btn btn-sm btn-info">
+                                    Ver Detalles
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay tickets para mostrar.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-container"></div>
+{% endblock %}

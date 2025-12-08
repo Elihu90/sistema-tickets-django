@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .carousel-item {
+        height: 80vh;
+        min-height: 400px;
+        background: no-repeat center center scroll;
+        -webkit-background-size: cover;
+        -moz-background-size: cover;
+        -o-background-size: cover;
+        background-size: cover;
+    }
+
+    .carousel-caption {
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 10px;
+        padding: 20px;
+    }
+
+    .feature-card {
+        transition: transform 0.3s;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+
+<div id="carouselExampleCaptions" class="carousel slide mb-5" data-bs-ride="carousel">
+    <div class="carousel-indicators">
+        <button type="button" data-bs-target="#carouselExampleCaptions" data-bs-slide-to="0" class="active"
+            aria-current="true" aria-label="Slide 1"></button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleCaptions"
+            data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Siguiente</span>
+        </button>
+    </div>
+
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 border-0 shadow feature-card">
+                    <div class="card-body">
+                        <div class="display-4 text-primary mb-3">🎫</div>
+                        <h3 class="card-title">Gestión de Tickets</h3>
+                        <p class="card-text">Reporta incidencias y solicita servicios de manera rápida y eficiente.</p>
+                        <a href="{% url 'crear_ticket' %}" class="btn btn-outline-primary">Crear Ticket</a>
+                    </div>
+                </div>
+            </div>
+            {% if user.is_staff %}
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 border-0 shadow feature-card">
+                    <div class="card-body">
+                        <div class="display-4 text-primary mb-3">📊</div>
+                        <h3 class="card-title">Dashboard</h3>
+                        <p class="card-text">Visualiza estadísticas y métricas del sistema en tiempo real.</p>
+                        <a href="{% url 'dashboard_service_line' %}" class="btn btn-outline-primary">Ver Dashboard</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 border-0 shadow feature-card">
+                    <div class="card-body">
+                        <div class="display-4 text-success mb-3">🛠️</div>
+                        <h3 class="card-title">Inventario</h3>
+                        <p class="card-text">Administra herramientas y equipos con control total.</p>
+                        <a href="{% url 'herramienta_list' %}" class="btn btn-outline-success">Ver Herramientas</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 border-0 shadow feature-card">
+                    <div class="card-body">
+                        <div class="display-4 text-warning mb-3">🔧</div>
+                        <h3 class="card-title">Catálogo de Refacciones</h3>
+                        <p class="card-text">Gestiona el catálogo de refacciones con números SAP.</p>
+                        <a href="{% url 'refaccion_list' %}" class="btn btn-outline-warning">Ver Refacciones</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 border-0 shadow feature-card">
+                    <div class="card-body">
+                        <div class="display-4 text-info mb-3">👥</div>
+                        <h3 class="card-title">Colaboradores</h3>
+                        <p class="card-text">Gestiona el personal y sus asignaciones.</p>
+                        <a href="{% url 'colaborador_list' %}" class="btn btn-outline-info">Ver Colaboradores</a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100 border-0 shadow feature-card">
+                    <div class="card-body">
+                        <div class="display-4 text-warning mb-3">📋</div>
+                        <h3 class="card-title">Mis Tickets</h3>
+                        <p class="card-text">Consulta el estado de tus solicitudes en tiempo real.</p>
+                        <a href="{% url 'lista_tickets' %}" class="btn btn-outline-warning">Ver Mis Tickets</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endblock %}
